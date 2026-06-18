@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import {
   FormGroup,
   FormControl,
@@ -7,7 +7,7 @@ import {
   AbstractControl,
   ValidationErrors
 } from '@angular/forms';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { AppointmentService } from '../../services/appointments.service';
 import { Appointment } from '../../models/appointments.model';
 import { Patient } from '../../models/patients.model';
@@ -17,44 +17,94 @@ import { Router } from '@angular/router';
 @Component({
   selector: 'app-appointments',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, NgClass],
+  imports: [ReactiveFormsModule, DatePipe],
   templateUrl: './appointments.html',
   styleUrl: './appointments.css'
 })
 export class Appointments implements OnInit {
 
-  appointments: Appointment[] = [];
-  filteredAppointments: Appointment[] = [];
+  appointments = signal<Appointment[]>([]);
+  searchText = signal('');
 
-  currentPage = 1;
-  pageSize = 10;
+  currentPage = signal(1);
+  readonly pageSize = 10;
 
-  patients: Patient[] = [];
-  doctors: Doctor[] = [];
+  patients = signal<Patient[]>([]);
+  doctors = signal<Doctor[]>([]);
 
-  patientSearch = '';
-  doctorSearch = '';
+  patientSearch = signal('');
+  doctorSearch = signal('');
 
-  filteredPatients: Patient[] = [];
-  filteredDoctors: Doctor[] = [];
+  filteredPatients = signal<Patient[]>([]);
+  filteredDoctors = signal<Doctor[]>([]);
 
-  showPatientSuggestions = false;
-  showDoctorSuggestions = false;
+  showPatientSuggestions = signal(false);
+  showDoctorSuggestions = signal(false);
 
-  allSlots: string[] = [];
-  availableSlots: string[] = [];
-  bookedSlots: string[] = [];
+  allSlots = signal<string[]>([]);
+  availableSlots = signal<string[]>([]);
+  bookedSlots = signal<string[]>([]);
 
-  userRole = '';
-  errorMessage = '';
-  searchText = '';
-  showAddAppointmentModal = false;
+  userRole = signal('');
+  errorMessage = signal('');
+  showAddAppointmentModal = signal(false);
 
   todayDate = new Date().toISOString().split('T')[0];
 
-  loadingSlots = false;
-  doctorAvailability = '';
-  bookedCount = 0;
+  loadingSlots = signal(false);
+  doctorAvailability = signal('');
+  bookedCount = signal(0);
+
+  filteredAppointments = computed(() => {
+    const search = this.searchText().toLowerCase().trim();
+
+    if (!search) {
+      return this.appointments();
+    }
+
+    return this.appointments().filter(appointment =>
+      appointment.appointmentCode?.toLowerCase().includes(search) ||
+      appointment.patientId?.firstName?.toLowerCase().includes(search) ||
+      appointment.patientId?.lastName?.toLowerCase().includes(search) ||
+      appointment.patientId?.UHID?.toLowerCase().includes(search) ||
+      appointment.doctorId?.employeeId?.userId?.firstName?.toLowerCase().includes(search) ||
+      appointment.doctorId?.employeeId?.userId?.lastName?.toLowerCase().includes(search) ||
+      appointment.doctorId?.employeeId?.department?.toLowerCase().includes(search) ||
+      appointment.timeSlot?.toLowerCase().includes(search) ||
+      appointment.status?.toLowerCase().includes(search) ||
+      appointment.reason?.toLowerCase().includes(search)
+    );
+  });
+
+  paginatedAppointments = computed(() => {
+    const startIndex = (this.currentPage() - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+
+    return this.filteredAppointments().slice(startIndex, endIndex);
+  });
+
+  totalPages = computed(() => {
+    return Math.ceil(this.filteredAppointments().length / this.pageSize);
+  });
+
+  startRecord = computed(() => {
+    if (this.filteredAppointments().length === 0) {
+      return 0;
+    }
+
+    return (this.currentPage() - 1) * this.pageSize + 1;
+  });
+
+  endRecord = computed(() => {
+    return Math.min(
+      this.currentPage() * this.pageSize,
+      this.filteredAppointments().length
+    );
+  });
+
+  canCreateAppointment = computed(() => {
+    return this.userRole() !== 'Doctor';
+  });
 
   appointmentForm = new FormGroup({
     patientId: new FormControl('', [
@@ -77,15 +127,14 @@ export class Appointments implements OnInit {
     ])
   });
 
-  constructor(
-    readonly appointmentService: AppointmentService,
-    readonly cd: ChangeDetectorRef,
-    readonly router: Router
-  ) { }
+  readonly appointmentService = inject(AppointmentService);
+  readonly router = inject(Router);
+
+  constructor() { }
 
   ngOnInit(): void {
     const role = localStorage.getItem('role');
-    this.userRole = role || '';
+    this.userRole.set(role || '');
 
     if (role === 'Doctor') {
       this.getMyAppointments();
@@ -97,10 +146,6 @@ export class Appointments implements OnInit {
     }
   }
 
-  get canCreateAppointment(): boolean {
-    return this.userRole !== 'Doctor';
-  }
-
   viewDetails(appointmentId: string): void {
     const basePath = localStorage.getItem('basePath') || '/admin';
 
@@ -110,7 +155,7 @@ export class Appointments implements OnInit {
   canCancelAppointment(appointment: any): boolean {
     return (
       appointment.status === 'BOOKED' &&
-      this.userRole !== 'Doctor'
+      this.userRole() !== 'Doctor'
     );
   }
 
@@ -147,41 +192,39 @@ export class Appointments implements OnInit {
     this.appointmentForm.get('timeSlot')?.setValue('');
 
     if (doctorId && appointmentDate) {
-      this.loadingSlots = true;
+      this.loadingSlots.set(true);
 
       this.appointmentService.getAvailableSlots(doctorId, appointmentDate)
         .subscribe({
           next: (res) => {
-            this.allSlots = res.data.allSlots || res.data.availableSlots || [];
-            this.availableSlots = res.data.availableSlots || [];
-            this.bookedSlots = res.data.bookedSlots || [];
-            this.bookedCount = res.data.bookedCount || 0;
+            this.allSlots.set(res.data.allSlots || res.data.availableSlots || []);
+            this.availableSlots.set(res.data.availableSlots || []);
+            this.bookedSlots.set(res.data.bookedSlots || []);
+            this.bookedCount.set(res.data.bookedCount || 0);
 
-            this.doctorAvailability =
-              `${res.data.availabilityStart} - ${res.data.availabilityEnd}`;
+            this.doctorAvailability.set(
+              `${res.data.availabilityStart} - ${res.data.availabilityEnd}`
+            );
 
-            this.loadingSlots = false;
-            this.cd.detectChanges();
+            this.loadingSlots.set(false);
           },
           error: (err) => {
             console.error('Error fetching slots:', err);
 
-            this.allSlots = [];
-            this.availableSlots = [];
-            this.bookedSlots = [];
-            this.bookedCount = 0;
-            this.doctorAvailability = '';
-            this.loadingSlots = false;
-
-            this.cd.detectChanges();
+            this.allSlots.set([]);
+            this.availableSlots.set([]);
+            this.bookedSlots.set([]);
+            this.bookedCount.set(0);
+            this.doctorAvailability.set('');
+            this.loadingSlots.set(false);
           }
         });
     } else {
-      this.allSlots = [];
-      this.availableSlots = [];
-      this.bookedSlots = [];
-      this.bookedCount = 0;
-      this.doctorAvailability = '';
+      this.allSlots.set([]);
+      this.availableSlots.set([]);
+      this.bookedSlots.set([]);
+      this.bookedCount.set(0);
+      this.doctorAvailability.set('');
     }
   }
 
@@ -189,9 +232,7 @@ export class Appointments implements OnInit {
     this.appointmentService.getMyAppointments()
       .subscribe({
         next: (res) => {
-          this.appointments = res.data;
-          this.filteredAppointments = res.data;
-          this.cd.detectChanges();
+          this.appointments.set(res.data);
         },
         error: (err) => {
           console.error('Error fetching my appointments:', err);
@@ -203,9 +244,7 @@ export class Appointments implements OnInit {
     this.appointmentService.getAppointments()
       .subscribe({
         next: (res) => {
-          this.appointments = res.data;
-          this.filteredAppointments = res.data;
-          this.cd.detectChanges();
+          this.appointments.set(res.data);
         },
         error: (err) => {
           console.error('Error fetching appointments:', err);
@@ -217,8 +256,7 @@ export class Appointments implements OnInit {
     this.appointmentService.getPatients()
       .subscribe({
         next: (res) => {
-          this.patients = res.data;
-          this.cd.detectChanges();
+          this.patients.set(res.data);
         },
         error: (err) => {
           console.error('Error fetching patients:', err);
@@ -230,8 +268,7 @@ export class Appointments implements OnInit {
     this.appointmentService.getDoctors()
       .subscribe({
         next: (res) => {
-          this.doctors = res.data;
-          this.cd.detectChanges();
+          this.doctors.set(res.data);
         },
         error: (err) => {
           console.error('Error fetching doctors:', err);
@@ -239,153 +276,115 @@ export class Appointments implements OnInit {
       });
   }
 
-  get paginatedAppointments(): Appointment[] {
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return this.filteredAppointments.slice(startIndex, endIndex);
-  }
-
-  get totalPages(): number {
-    return Math.ceil(this.filteredAppointments.length / this.pageSize);
-  }
-
-  get startRecord(): number {
-    if (this.filteredAppointments.length === 0) {
-      return 0;
-    }
-
-    return (this.currentPage - 1) * this.pageSize + 1;
-  }
-
-  get endRecord(): number {
-    return Math.min(
-      this.currentPage * this.pageSize,
-      this.filteredAppointments.length
-    );
+  onSearchInput(value: string): void {
+    this.searchText.set(value);
+    this.currentPage.set(1);
   }
 
   goToPreviousPage() {
-    if (this.currentPage > 1) {
-      this.currentPage--;
+    if (this.currentPage() > 1) {
+      this.currentPage.update(page => page - 1);
     }
   }
 
   goToNextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(page => page + 1);
     }
-  }
-
-  filterAppointments() {
-    const search = this.searchText.toLowerCase().trim();
-
-    if (!search) {
-      this.filteredAppointments = [...this.appointments];
-      this.currentPage = 1;
-      return;
-    }
-
-    this.filteredAppointments = this.appointments.filter(appointment =>
-      appointment.appointmentCode?.toLowerCase().includes(search) ||
-      appointment.patientId?.firstName?.toLowerCase().includes(search) ||
-      appointment.patientId?.lastName?.toLowerCase().includes(search) ||
-      appointment.patientId?.UHID?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.userId?.firstName?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.userId?.lastName?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.department?.toLowerCase().includes(search) ||
-      appointment.timeSlot?.toLowerCase().includes(search) ||
-      appointment.status?.toLowerCase().includes(search) ||
-      appointment.reason?.toLowerCase().includes(search)
-    );
-
-    this.currentPage = 1;
   }
 
   showPatientDropdown() {
-    this.filteredPatients = [...this.patients].slice(0, 6);
-    this.showPatientSuggestions = true;
+    this.filteredPatients.set([...this.patients()].slice(0, 6));
+    this.showPatientSuggestions.set(true);
   }
 
-  filterPatients() {
-    const search = this.patientSearch.toLowerCase().trim();
+  filterPatientsSearch(value: string) {
+    this.patientSearch.set(value);
+    const search = value.toLowerCase().trim();
 
     this.appointmentForm.patchValue({
       patientId: ''
     });
 
     if (!search) {
-      this.filteredPatients = [...this.patients].slice(0, 6);
-      this.showPatientSuggestions = true;
+      this.filteredPatients.set([...this.patients()].slice(0, 6));
+      this.showPatientSuggestions.set(true);
       return;
     }
 
-    this.filteredPatients = this.patients
-      .filter(patient =>
-        `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(search) ||
-        patient.UHID?.toLowerCase().includes(search)
-      )
-      .slice(0, 6);
+    this.filteredPatients.set(
+      this.patients()
+        .filter(patient =>
+          `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(search) ||
+          patient.UHID?.toLowerCase().includes(search)
+        )
+        .slice(0, 6)
+    );
 
-    this.showPatientSuggestions = true;
+    this.showPatientSuggestions.set(true);
   }
 
   selectPatient(patient: Patient) {
-    this.patientSearch =
-      `${patient.firstName} ${patient.lastName} - ${patient.UHID}`;
+    this.patientSearch.set(
+      `${patient.firstName} ${patient.lastName} - ${patient.UHID}`
+    );
 
     this.appointmentForm.patchValue({
       patientId: patient.patientId
     });
 
-    this.showPatientSuggestions = false;
+    this.showPatientSuggestions.set(false);
   }
 
   showDoctorDropdown() {
-    this.filteredDoctors = [...this.doctors].slice(0, 6);
-    this.showDoctorSuggestions = true;
+    this.filteredDoctors.set([...this.doctors()].slice(0, 6));
+    this.showDoctorSuggestions.set(true);
   }
 
-  filterDoctorsSearch() {
-    const search = this.doctorSearch.toLowerCase().trim();
+  filterDoctorsSearch(value: string) {
+    this.doctorSearch.set(value);
+    const search = value.toLowerCase().trim();
 
     this.appointmentForm.patchValue({
       doctorId: '',
       timeSlot: ''
     });
 
-    this.allSlots = [];
-    this.availableSlots = [];
-    this.bookedSlots = [];
-    this.bookedCount = 0;
-    this.doctorAvailability = '';
+    this.allSlots.set([]);
+    this.availableSlots.set([]);
+    this.bookedSlots.set([]);
+    this.bookedCount.set(0);
+    this.doctorAvailability.set('');
 
     if (!search) {
-      this.filteredDoctors = [...this.doctors].slice(0, 6);
-      this.showDoctorSuggestions = true;
+      this.filteredDoctors.set([...this.doctors()].slice(0, 6));
+      this.showDoctorSuggestions.set(true);
       return;
     }
 
-    this.filteredDoctors = this.doctors
-      .filter(doctor =>
-        `${doctor.firstName} ${doctor.lastName}`.toLowerCase().includes(search) ||
-        doctor.specialization?.toLowerCase().includes(search)
-      )
-      .slice(0, 6);
+    this.filteredDoctors.set(
+      this.doctors()
+        .filter(doctor =>
+          `${doctor.firstName} ${doctor.lastName}`.toLowerCase().includes(search) ||
+          doctor.specialization?.toLowerCase().includes(search)
+        )
+        .slice(0, 6)
+    );
 
-    this.showDoctorSuggestions = true;
+    this.showDoctorSuggestions.set(true);
   }
 
   selectDoctor(doctor: Doctor) {
-    this.doctorSearch =
-      `Dr. ${doctor.firstName} ${doctor.lastName} - ${doctor.specialization}`;
+    this.doctorSearch.set(
+      `Dr. ${doctor.firstName} ${doctor.lastName} - ${doctor.specialization}`
+    );
 
     this.appointmentForm.patchValue({
       doctorId: doctor.employeeId,
       timeSlot: ''
     });
 
-    this.showDoctorSuggestions = false;
+    this.showDoctorSuggestions.set(false);
   }
 
   selectSlot(slot: string): void {
@@ -399,7 +398,7 @@ export class Appointments implements OnInit {
   }
 
   isBookedSlot(slot: string): boolean {
-    return this.bookedSlots.includes(slot);
+    return this.bookedSlots().includes(slot);
   }
 
   isSelectedSlot(slot: string): boolean {
@@ -409,47 +408,47 @@ export class Appointments implements OnInit {
   openAddAppointmentModal() {
     this.appointmentForm.reset();
 
-    this.patientSearch = '';
-    this.doctorSearch = '';
+    this.patientSearch.set('');
+    this.doctorSearch.set('');
 
-    this.filteredPatients = [];
-    this.filteredDoctors = [];
+    this.filteredPatients.set([]);
+    this.filteredDoctors.set([]);
 
-    this.showPatientSuggestions = false;
-    this.showDoctorSuggestions = false;
+    this.showPatientSuggestions.set(false);
+    this.showDoctorSuggestions.set(false);
 
-    this.allSlots = [];
-    this.availableSlots = [];
-    this.bookedSlots = [];
+    this.allSlots.set([]);
+    this.availableSlots.set([]);
+    this.bookedSlots.set([]);
 
-    this.bookedCount = 0;
-    this.doctorAvailability = '';
-    this.errorMessage = '';
+    this.bookedCount.set(0);
+    this.doctorAvailability.set('');
+    this.errorMessage.set('');
 
-    this.showAddAppointmentModal = true;
+    this.showAddAppointmentModal.set(true);
   }
 
   closeAddAppointmentModal() {
-    this.showAddAppointmentModal = false;
+    this.showAddAppointmentModal.set(false);
 
     this.appointmentForm.reset();
 
-    this.patientSearch = '';
-    this.doctorSearch = '';
+    this.patientSearch.set('');
+    this.doctorSearch.set('');
 
-    this.filteredPatients = [];
-    this.filteredDoctors = [];
+    this.filteredPatients.set([]);
+    this.filteredDoctors.set([]);
 
-    this.showPatientSuggestions = false;
-    this.showDoctorSuggestions = false;
+    this.showPatientSuggestions.set(false);
+    this.showDoctorSuggestions.set(false);
 
-    this.allSlots = [];
-    this.availableSlots = [];
-    this.bookedSlots = [];
+    this.allSlots.set([]);
+    this.availableSlots.set([]);
+    this.bookedSlots.set([]);
 
-    this.bookedCount = 0;
-    this.errorMessage = '';
-    this.doctorAvailability = '';
+    this.bookedCount.set(0);
+    this.errorMessage.set('');
+    this.doctorAvailability.set('');
   }
 
   saveAppointment() {
@@ -458,22 +457,21 @@ export class Appointments implements OnInit {
       return;
     }
 
-    this.errorMessage = '';
+    this.errorMessage.set('');
     const payload = this.appointmentForm.value;
 
     this.appointmentService.createAppointment(payload as any)
       .subscribe({
         next: () => {
-          this.errorMessage = '';
+          this.errorMessage.set('');
           alert('Appointment created successfully!');
           this.closeAddAppointmentModal();
           this.getAppointments();
-          this.cd.detectChanges();
         },
         error: (err) => {
-          this.errorMessage =
-            err.error?.message || 'Appointment creation failed doctor not joined yet';
-          this.cd.detectChanges();
+          this.errorMessage.set(
+            err.error?.message || 'Appointment creation failed doctor not joined yet'
+          );
         }
       });
   }

@@ -5,7 +5,7 @@
         <h2>Appointments</h2>
 
         <div class="header-actions">
-            @if (canCreateAppointment) {
+            @if (canCreateAppointment()) {
             <button class="add-btn" (click)="openAddAppointmentModal()">
                 <i class="bi bi-plus-lg"></i>
                 Add Appointment
@@ -17,8 +17,8 @@
     <!-- Search -->
     <div class="table-toolbar">
         <div class="search-box">
-            <input type="text" placeholder="Search appointments..." [value]="searchText"
-                (input)="searchText = $any($event.target).value; filterAppointments()" />
+            <input type="text" placeholder="Search appointments..." [value]="searchText()"
+                (input)="onSearchInput($any($event.target).value)" />
         </div>
     </div>
 
@@ -36,41 +36,39 @@
                     <th>Time Slot</th>
                     <th>Status</th>
                     <th>Reason</th>
-                    @if (canCreateAppointment) {
+                    @if (canCreateAppointment()) {
                     <th>Actions</th>
                     }
                 </tr>
             </thead>
 
             <tbody>
-                @for (appointment of paginatedAppointments; track appointment._id) {
+                @for (appointment of paginatedAppointments(); track appointment._id) {
                 <tr>
                     <td>{{ appointment.appointmentCode }}</td>
 
                     <td>
-                        {{ appointment.patientId?.firstName }}
-                        {{ appointment.patientId?.lastName }}
+                        {{ appointment.patientId.firstName }}
+                        {{ appointment.patientId.lastName }}
                     </td>
 
-                    <td>{{ appointment.patientId?.UHID }}</td>
+                    <td>{{ appointment.patientId.UHID }}</td>
 
                     <td>
-                        {{ appointment.doctorId?.employeeId?.userId?.firstName }}
-                        {{ appointment.doctorId?.employeeId?.userId?.lastName }}
+                        {{ appointment.doctorId.employeeId.userId.firstName }}
+                        {{ appointment.doctorId.employeeId.userId.lastName }}
                     </td>
 
-                    <td>{{ appointment.doctorId?.employeeId?.department }}</td>
+                    <td>{{ appointment.doctorId.employeeId.department }}</td>
 
                     <td>{{ appointment.appointmentDate | date:'dd-MM-yyyy' }}</td>
 
                     <td>{{ appointment.timeSlot }}</td>
 
                     <td>
-                        <span class="status-badge" [ngClass]="{
-                                'status-booked': appointment.status === 'BOOKED',
-                                'status-completed': appointment.status === 'COMPLETED',
-                                'status-cancelled': appointment.status === 'CANCELLED'
-                            }">
+                        <span class="status-badge" [class.status-booked]="appointment.status === 'BOOKED'"
+                            [class.status-completed]="appointment.status === 'COMPLETED'"
+                            [class.status-cancelled]="appointment.status === 'CANCELLED'">
                             {{ appointment.status }}
                         </span>
                     </td>
@@ -94,7 +92,7 @@
             </tbody>
         </table>
 
-        @if (filteredAppointments.length === 0) {
+        @if (filteredAppointments().length === 0) {
         <div class="empty-state">
             <p>No appointment data available</p>
 
@@ -113,22 +111,22 @@
     <!-- Footer -->
     <div class="table-footer">
         <p>
-            Records: {{ startRecord }} - {{ endRecord }} of {{ filteredAppointments.length }}
+            Records: {{ startRecord() }} - {{ endRecord() }} of {{ filteredAppointments().length }}
         </p>
 
         <div class="pagination">
-            <button type="button" class="pagination-icon-button" [class.disabled]="currentPage === 1"
-                [disabled]="currentPage === 1" aria-label="Go to previous page" (click)="goToPreviousPage()">
+            <button type="button" class="pagination-icon-button" [class.disabled]="currentPage() === 1"
+                [disabled]="currentPage() === 1" aria-label="Go to previous page" (click)="goToPreviousPage()">
                 <i class="bi bi-chevron-left" aria-hidden="true"></i>
             </button>
 
             <span class="page-info">
-                Page {{ currentPage }} of {{ totalPages }}
+                Page {{ currentPage() }} of {{ totalPages() }}
             </span>
 
             <button type="button" class="pagination-icon-button"
-                [class.disabled]="currentPage === totalPages || totalPages === 0"
-                [disabled]="currentPage === totalPages || totalPages === 0" aria-label="Go to next page"
+                [class.disabled]="currentPage() === totalPages() || totalPages() === 0"
+                [disabled]="currentPage() === totalPages() || totalPages() === 0" aria-label="Go to next page"
                 (click)="goToNextPage()">
                 <i class="bi bi-chevron-right" aria-hidden="true"></i>
             </button>
@@ -137,7 +135,7 @@
 </div>
 
 <!-- Add Appointment Modal -->
-@if (showAddAppointmentModal) {
+@if (showAddAppointmentModal()) {
 <div class="modal-overlay">
 
     <div class="modal-box">
@@ -164,13 +162,13 @@
                     <div class="form-group search-select-wrapper">
                         <label for="patientText">Patient <span>*</span></label>
 
-                        <input type="text" placeholder="Search or select patient" [value]="patientSearch"
+                        <input type="text" placeholder="Search or select patient" [value]="patientSearch()"
                             (focus)="showPatientDropdown()"
-                            (input)="patientSearch = $any($event.target).value; filterPatients()" />
+                            (input)="filterPatientsSearch($any($event.target).value)" />
 
-                        @if (showPatientSuggestions && filteredPatients.length > 0) {
+                        @if (showPatientSuggestions() && filteredPatients().length > 0) {
                         <div class="suggestion-list">
-                            @for (patient of filteredPatients; track patient.patientId) {
+                            @for (patient of filteredPatients(); track patient.patientId) {
                             <div class="suggestion-item" (click)="selectPatient(patient)">
                                 {{ patient.firstName }} {{ patient.lastName }} - {{ patient.UHID }}
                             </div>
@@ -178,7 +176,7 @@
                         </div>
                         }
 
-                        @if (showPatientSuggestions && patientSearch && filteredPatients.length === 0) {
+                        @if (showPatientSuggestions() && patientSearch() && filteredPatients().length === 0) {
                         <div class="suggestion-list">
                             <div class="suggestion-item no-result">
                                 No patient found
@@ -196,13 +194,13 @@
                     <div class="form-group search-select-wrapper">
                         <label for="doctorText">Doctor <span>*</span></label>
 
-                        <input type="text" placeholder="Search or select doctor" [value]="doctorSearch"
+                        <input type="text" placeholder="Search or select doctor" [value]="doctorSearch()"
                             (focus)="showDoctorDropdown()"
-                            (input)="doctorSearch = $any($event.target).value; filterDoctorsSearch()" />
+                            (input)="filterDoctorsSearch($any($event.target).value)" />
 
-                        @if (showDoctorSuggestions && filteredDoctors.length > 0) {
+                        @if (showDoctorSuggestions() && filteredDoctors().length > 0) {
                         <div class="suggestion-list">
-                            @for (doctor of filteredDoctors; track doctor.doctorId) {
+                            @for (doctor of filteredDoctors(); track doctor.doctorId) {
                             <div class="suggestion-item" (click)="selectDoctor(doctor)">
                                 Dr. {{ doctor.firstName }} {{ doctor.lastName }} - {{ doctor.specialization }}
                             </div>
@@ -210,7 +208,7 @@
                         </div>
                         }
 
-                        @if (showDoctorSuggestions && doctorSearch && filteredDoctors.length === 0) {
+                        @if (showDoctorSuggestions() && doctorSearch() && filteredDoctors().length === 0) {
                         <div class="suggestion-list">
                             <div class="suggestion-item no-result">
                                 No doctor found
@@ -241,11 +239,11 @@
                     </div>
 
                     <!-- Doctor Availability Info -->
-                    @if (doctorAvailability) {
+                    @if (doctorAvailability()) {
                     <div class="form-group">
                         <div class="availability-info">
                             <i class="bi bi-clock"></i>
-                            Doctor available: {{ doctorAvailability }}
+                            Doctor available: {{ doctorAvailability() }}
                         </div>
                     </div>
                     }
@@ -262,19 +260,19 @@
                         <small class="info-msg">Please select doctor and date to see available slots</small>
                         }
 
-                        @if (loadingSlots) {
+                        @if (loadingSlots()) {
                         <select disabled>
                             <option>Loading slots...</option>
                         </select>
                         }
 
-                        @if (!loadingSlots &&
+                        @if (!loadingSlots() &&
                         appointmentForm.get('doctorId')?.value &&
                         appointmentForm.get('appointmentDate')?.value) {
 
-                        @if (allSlots.length > 0) {
+                        @if (allSlots().length > 0) {
                         <div class="slot-grid">
-                            @for (slot of allSlots; track slot) {
+                            @for (slot of allSlots(); track slot) {
                             <button type="button" class="slot-btn" [class.slot-available]="!isBookedSlot(slot)"
                                 [class.slot-booked]="isBookedSlot(slot)" [class.slot-selected]="isSelectedSlot(slot)"
                                 [disabled]="isBookedSlot(slot)" (click)="selectSlot(slot)">
@@ -283,15 +281,15 @@
                             }
                         </div>
 
-                        @if (bookedCount > 0) {
+                        @if (bookedCount() > 0) {
                         <small class="booked-info">
                             <i class="bi bi-info-circle"></i>
-                            {{ bookedCount }} slot(s) already booked
+                            {{ bookedCount() }} slot(s) already booked
                         </small>
                         }
                         }
 
-                        @if (allSlots.length === 0) {
+                        @if (allSlots().length === 0) {
                         <select disabled>
                             <option>No slots available</option>
                         </select>
@@ -304,7 +302,7 @@
 
                         @if (appointmentForm.get('timeSlot')?.invalid &&
                         appointmentForm.get('timeSlot')?.touched &&
-                        allSlots.length > 0) {
+                        allSlots().length > 0) {
                         <small class="error-msg">Time slot is required</small>
                         }
                     </div>
@@ -336,8 +334,8 @@
 
             </form>
 
-            @if (errorMessage) {
-            <p class="error-msg" style="margin-top: 10px;">{{ errorMessage }}</p>
+            @if (errorMessage()) {
+            <p class="error-msg" style="margin-top: 10px;">{{ errorMessage() }}</p>
             }
         </div>
 
@@ -347,7 +345,7 @@
             </button>
 
             <button class="save-btn" (click)="saveAppointment()"
-                [disabled]="appointmentForm.invalid || availableSlots.length === 0">
+                [disabled]="appointmentForm.invalid || availableSlots().length === 0">
                 Save
             </button>
         </div>

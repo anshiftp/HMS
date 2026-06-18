@@ -2,7 +2,7 @@
 <div class="sidebar">
     <div class="menu">
         <!-- ng:for(nodes) -->
-         @for(node of nodes;track node._id){
+         @for(node of nodes();track node._id){
 
             <a [routerLink]="getFullPath(node.path)"
             routerLinkActive="active"

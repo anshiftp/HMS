@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, HostListener, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
@@ -11,21 +11,23 @@ import { CommonModule } from '@angular/common';
 })
 export class Navbar {
 
-  showProfileDropdown = false;
+  showProfileDropdown = signal(false);
 
-  constructor(readonly router: Router) {}
+  readonly router = inject(Router);
+
+  constructor() {}
 
   toggleProfileDropdown() {
-    this.showProfileDropdown = !this.showProfileDropdown;
+    this.showProfileDropdown.update(show => !show);
   }
 
   viewProfile() {
-    this.showProfileDropdown = false;
+    this.showProfileDropdown.set(false);
     this.router.navigate(['/profile']);
   }
 
   logout() {
-    this.showProfileDropdown = false;
+    this.showProfileDropdown.set(false);
 
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -57,7 +59,7 @@ export class Navbar {
   onDocumentClick(event: Event) {
     const target = event.target as HTMLElement;
     if (!target.closest('.navbar-profile-wrapper')) {
-      this.showProfileDropdown = false;
+      this.showProfileDropdown.set(false);
     }
   }
 

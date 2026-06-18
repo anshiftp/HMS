@@ -103,14 +103,14 @@
 
                     </div>
 
-                    @if (errorMessage) {
+                    @if (errorMessage()) {
                     <div class="error-message">
-                        {{ errorMessage }}
+                        {{ errorMessage() }}
                     </div>
                     }
 
-                    <button type="submit" [disabled]="isLoading" class="login-button">
-                        {{ isLoading ? 'Logging in...' : 'Login' }}
+                    <button type="submit" [disabled]="isLoading()" class="login-button">
+                        {{ isLoading() ? 'Logging in...' : 'Login' }}
                     </button>
 
                 </form>

@@ -15,8 +15,8 @@
     <!-- Search -->
     <div class="table-toolbar">
         <div class="search-box">
-            <input type="text" placeholder="Search doctors..." [value]="searchText"
-                (input)="searchText = $any($event.target).value; filterDoctors()" />
+            <input type="text" placeholder="Search doctors..." [value]="searchText()"
+                (input)="onSearchInput($any($event.target).value)" />
         </div>
     </div>
 
@@ -41,7 +41,7 @@
             </thead>
 
             <tbody>
-                @for (doctor of paginatedDoctors; track doctor.doctorId) {
+                @for (doctor of paginatedDoctors(); track doctor.doctorId) {
                 <tr>
                     <td>{{ doctor.employeeCode }}</td>
                     <td>{{ doctor.firstName }} {{ doctor.lastName }}</td>
@@ -54,10 +54,8 @@
                     <td>{{ doctor.experienceYears }} Years</td>
                     <td>{{ doctor.availabilityStartTime }} - {{ doctor.availabilityEndTime }}</td>
                     <td>
-                        <span class="status-badge" [ngClass]="{
-                                'status-active': doctor.status === 'ACTIVE',
-                                'status-inactive': doctor.status === 'INACTIVE'
-                            }">
+                        <span class="status-badge" [class.status-active]="doctor.status === 'ACTIVE'"
+                            [class.status-inactive]="doctor.status === 'INACTIVE'">
                             {{ doctor.status }}
                         </span>
                     </td>
@@ -72,7 +70,7 @@
             </tbody>
         </table>
 
-        @if (filteredDoctors.length === 0) {
+        @if (filteredDoctors().length === 0) {
         <div class="empty-state">
             <p>No data available in table</p>
 
@@ -91,19 +89,19 @@
     <!-- Footer -->
     <div class="table-footer">
         <p>
-            Records: {{ startRecord }} - {{ endRecord }} of {{ filteredDoctors.length }}
+            Records: {{ startRecord() }} - {{ endRecord() }} of {{ filteredDoctors().length }}
         </p>
 
         <div class="pagination">
-            <i class="bi bi-chevron-left" [class.disabled]="currentPage === 1" (click)="goToPreviousPage()"
+            <i class="bi bi-chevron-left" [class.disabled]="currentPage() === 1" (click)="goToPreviousPage()"
                 (keypress)="goToPreviousPage()" (keydown)="goToPreviousPage()" (keyup)="goToPreviousPage()">
             </i>
 
             <span class="page-info">
-                Page {{ currentPage }} of {{ totalPages }}
+                Page {{ currentPage() }} of {{ totalPages() }}
             </span>
 
-            <i class="bi bi-chevron-right" [class.disabled]="currentPage === totalPages || totalPages === 0"
+            <i class="bi bi-chevron-right" [class.disabled]="currentPage() === totalPages() || totalPages() === 0"
                 (click)="goToNextPage()" (keypress)="goToNextPage()" (keydown)="goToNextPage()"
                 (keyup)="goToNextPage()">
             </i>
@@ -113,13 +111,13 @@
 </div>
 
 <!-- Add Doctor Modal -->
-@if (showAddDoctorModal) {
+@if (showAddDoctorModal()) {
 <div class="modal-overlay">
 
     <div class="modal-box">
 
         <div class="modal-header">
-            <h2>{{ isEditMode ? 'Edit Doctor' : 'Add Doctor' }}</h2>
+            <h2>{{ isEditMode() ? 'Edit Doctor' : 'Add Doctor' }}</h2>
 
             <button class="close-btn" (click)="closeAddDoctorModal()">
                 <i class="bi bi-x-lg"></i>

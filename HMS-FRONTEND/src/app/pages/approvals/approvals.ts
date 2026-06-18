@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApprovalsService } from '../../services/approval.service';
 import { ApprovalRequest } from '../../models/approval.model';
@@ -11,13 +11,12 @@ import { ApprovalRequest } from '../../models/approval.model';
 })
 export class Approvals implements OnInit {
 
-  pendingRequests: ApprovalRequest[] = [];
-  expandedRequestId: string | null = null;
+  pendingRequests = signal<ApprovalRequest[]>([]);
+  expandedRequestId = signal<string | null>(null);
 
-  constructor(
-    readonly approvalsService: ApprovalsService,
-    readonly cd: ChangeDetectorRef
-  ) {}
+  readonly approvalsService = inject(ApprovalsService);
+
+  constructor() {}
 
   ngOnInit(): void {
     this.getPendingRequests();
@@ -27,18 +26,17 @@ export class Approvals implements OnInit {
     this.approvalsService.getPendingRequests()
       .subscribe({
         next: (res) => {
-          this.pendingRequests = res.data;
-          this.cd.detectChanges();
+          this.pendingRequests.set(res.data);
         },
         error: (err) => {}
       });
   }
 
   toggleDetails(requestId: string) {
-    if (this.expandedRequestId === requestId) {
-      this.expandedRequestId = null;
+    if (this.expandedRequestId() === requestId) {
+      this.expandedRequestId.set(null);
     } else {
-      this.expandedRequestId = requestId;
+      this.expandedRequestId.set(requestId);
     }
   }
 
@@ -46,10 +44,9 @@ export class Approvals implements OnInit {
     this.approvalsService.approveRequest(requestId)
       .subscribe({
         next: (res) => {
-          this.pendingRequests = this.pendingRequests.filter(
-            request => request._id !== requestId
+          this.pendingRequests.update(requests =>
+            requests.filter(request => request._id !== requestId)
           );
-          this.cd.detectChanges();
         },
         error: (err) => {}
       });
@@ -65,10 +62,9 @@ export class Approvals implements OnInit {
     this.approvalsService.rejectRequest(requestId, rejectionReason)
       .subscribe({
         next: (res) => {
-          this.pendingRequests = this.pendingRequests.filter(
-            request => request._id !== requestId
+          this.pendingRequests.update(requests =>
+            requests.filter(request => request._id !== requestId)
           );
-          this.cd.detectChanges();
         },
         error: (err) => {}
       });

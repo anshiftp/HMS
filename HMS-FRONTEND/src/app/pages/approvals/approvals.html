@@ -3,14 +3,14 @@
     <h2>Pending Approvals</h2>
   </div>
 
-  @if (pendingRequests.length === 0) {
+  @if (pendingRequests().length === 0) {
     <div class="empty-state">
       <h3>No Pending Requests</h3>
       <p>All verified join requests have been processed.</p>
     </div>
   }
 
-  @if (pendingRequests.length > 0) {
+  @if (pendingRequests().length > 0) {
     <div class="table-section">
       <table>
         <thead>
@@ -26,7 +26,7 @@
         </thead>
 
         <tbody>
-          @for (request of pendingRequests; track request._id) {
+          @for (request of pendingRequests(); track request._id) {
             <tr>
               <td>{{ request.firstName }} {{ request.lastName }}</td>
               <td>{{ request.email }}</td>
@@ -45,7 +45,7 @@
                   (keypress)="toggleDetails(request._id)"
                   (keydown)="toggleDetails(request._id)"
                   (keyup)="toggleDetails(request._id)">
-                  {{ expandedRequestId === request._id ? 'Hide' : 'View' }}
+                  {{ expandedRequestId() === request._id ? 'Hide' : 'View' }}
                 </button>
               </td>
 
@@ -63,7 +63,7 @@
               </td>
             </tr>
 
-            @if (expandedRequestId === request._id) {
+            @if (expandedRequestId() === request._id) {
               <tr class="expanded-row">
                 <td colspan="7">
                   <div class="details-box">

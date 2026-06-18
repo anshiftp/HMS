@@ -10,9 +10,11 @@
     <input type="password" placeholder="Enter your password">
     <button type="button" (click)="showDemoMessage()">Sign Up</button>
 
-<p class="demo-message" *ngIf="message">
-  {{ message }}
+@if (message()) {
+<p class="demo-message">
+  {{ message() }}
 </p>
+}
     
 </form>
 

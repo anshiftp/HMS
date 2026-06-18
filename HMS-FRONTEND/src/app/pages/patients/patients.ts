@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import {
   FormGroup,
   FormControl,
@@ -86,9 +86,9 @@ export class Patients implements OnInit {
     ])
   });
 
-  constructor(
-    readonly patientService: PatientService
-  ) {}
+  readonly patientService = inject(PatientService);
+
+  constructor() {}
 
   ngOnInit(): void {
     this.getPatients();
@@ -116,18 +116,18 @@ export class Patients implements OnInit {
       });
   }
 
-  startRecord(): number {
+  startRecord = computed(() => {
     if (this.totalRecords() === 0) {
       return 0;
     }
 
     return (this.currentPage() - 1) * this.itemsPerPage + 1;
-  }
+  });
 
-  endRecord(): number {
+  endRecord = computed(() => {
     const end = this.currentPage() * this.itemsPerPage;
     return Math.min(end, this.totalRecords());
-  }
+  });
 
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {

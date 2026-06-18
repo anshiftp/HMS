@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -15,32 +15,32 @@ export class ChangePassword {
   newPassword = '';
   confirmPassword = '';
 
-  message = '';
-  errorMessage = '';
+  message = signal('');
+  errorMessage = signal('');
 
-  constructor(
-    readonly http: HttpClient,
-    readonly router: Router
-  ) {}
+  readonly http = inject(HttpClient);
+  readonly router = inject(Router);
+
+  constructor() {}
 
   changePassword() {
-    this.message = '';
-    this.errorMessage = '';
+    this.message.set('');
+    this.errorMessage.set('');
 
     if (!this.oldPassword || !this.newPassword || !this.confirmPassword) {
-      this.errorMessage = 'All fields are required';
+      this.errorMessage.set('All fields are required');
       return;
     }
 
     if (this.newPassword !== this.confirmPassword) {
-      this.errorMessage = 'New password and confirm password do not match';
+      this.errorMessage.set('New password and confirm password do not match');
       return;
     }
 
     const token = localStorage.getItem('token');
 
     if (!token) {
-      this.errorMessage = 'Session expired. Please login again.';
+      this.errorMessage.set('Session expired. Please login again.');
       this.router.navigate(['/login']);
       return;
     }
@@ -59,7 +59,7 @@ export class ChangePassword {
         next: (res: any) => {
           console.log('Password changed:', res);
 
-          this.message = 'Password changed successfully';
+          this.message.set('Password changed successfully');
 
           const user = JSON.parse(localStorage.getItem('user') || '{}');
           user.mustChangePassword = false;
@@ -71,7 +71,7 @@ export class ChangePassword {
         },
         error: (err) => {
           console.log('Change password error:', err);
-          this.errorMessage = err.error?.message || 'Password change failed';
+          this.errorMessage.set(err.error?.message || 'Password change failed');
         }
       });
   }

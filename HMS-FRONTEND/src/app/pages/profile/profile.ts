@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { Auth } from '../../services/auth';
 import { CommonModule,Location } from '@angular/common';
 
@@ -10,13 +10,13 @@ import { CommonModule,Location } from '@angular/common';
 })
 export class Profile implements OnInit {
 
-  profile: any = null;
-  errorMessage = '';
+  profile = signal<any>(null);
+  errorMessage = signal('');
 
-  constructor(readonly authService: Auth,
-    readonly cd: ChangeDetectorRef,
-    readonly location:Location
-  ) { }
+  readonly authService = inject(Auth);
+  readonly location = inject(Location);
+
+  constructor() { }
 
   ngOnInit(): void {
     this.getProfile();
@@ -30,12 +30,11 @@ export class Profile implements OnInit {
     this.authService.getProfile().subscribe({
       next: (res) => {
         console.log('Profile response:', res);
-        this.profile = res.data;
-        this.cd.detectChanges();
+        this.profile.set(res.data);
       },
       error: (err) => {
         console.log('Profile fetch error:', err);
-        this.errorMessage = err.error?.message || 'Failed to load profile';
+        this.errorMessage.set(err.error?.message || 'Failed to load profile');
       }
     });
 

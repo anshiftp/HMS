@@ -1,27 +1,71 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { FormGroup, FormControl, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { EmployeeService } from '../../services/employee.service';
 import { Employee } from '../../models/employee.model';
 
 @Component({
   selector: 'app-employees',
   standalone: true,
-  imports: [ReactiveFormsModule, DatePipe, NgClass],
+  imports: [ReactiveFormsModule, DatePipe],
   templateUrl: './employees.html',
   styleUrl: './employees.css'
 })
 export class Employees implements OnInit {
 
-  employees: Employee[] = [];
-  filteredEmployees: Employee[] = [];
-  searchText = '';
-  showAddEmployeeModal = false;
-  currentPage = 1;
-  pageSize = 10;
-  isEditMode = false;
-  selectedEmployee: Employee | null = null;
-  loggedInUserId: string | null = null;
+  employees = signal<Employee[]>([]);
+  searchText = signal('');
+  showAddEmployeeModal = signal(false);
+  currentPage = signal(1);
+  readonly pageSize = 10;
+  isEditMode = signal(false);
+  selectedEmployee = signal<Employee | null>(null);
+  loggedInUserId = signal<string | null>(null);
+
+  filteredEmployees = computed(() => {
+    const search = this.searchText().toLowerCase().trim();
+
+    if (!search) {
+      return this.employees();
+    }
+
+    return this.employees().filter(employee =>
+      employee.employeeCode?.toLowerCase().includes(search) ||
+      employee.firstName?.toLowerCase().includes(search) ||
+      employee.lastName?.toLowerCase().includes(search) ||
+      employee.email?.toLowerCase().includes(search) ||
+      employee.phone?.includes(search) ||
+      employee.role?.toLowerCase().includes(search) ||
+      employee.department?.toLowerCase().includes(search) ||
+      employee.designation?.toLowerCase().includes(search)
+    );
+  });
+
+  paginatedEmployees = computed(() => {
+    const startIndex = (this.currentPage() - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+
+    return this.filteredEmployees().slice(startIndex, endIndex);
+  });
+
+  totalPages = computed(() => {
+    return Math.ceil(this.filteredEmployees().length / this.pageSize);
+  });
+
+  startRecord = computed(() => {
+    if (this.filteredEmployees().length === 0) {
+      return 0;
+    }
+
+    return (this.currentPage() - 1) * this.pageSize + 1;
+  });
+
+  endRecord = computed(() => {
+    return Math.min(
+      this.currentPage() * this.pageSize,
+      this.filteredEmployees().length
+    );
+  });
 
 
   joiningDateRangeValidator(control: AbstractControl): ValidationErrors | null {
@@ -94,51 +138,19 @@ getMaxDate(): string {
     ])
   });
 
-  constructor(
-    readonly employeeService: EmployeeService,
-    readonly cd: ChangeDetectorRef
-  ) { }
+  readonly employeeService = inject(EmployeeService);
+
+  constructor() { }
 
   ngOnInit(): void {
     this.getEmployees();
   }
 
-  get paginatedEmployees(): Employee[] {
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return this.filteredEmployees.slice(startIndex, endIndex);
-  }
-
-  get totalPages(): number {
-    return Math.ceil(this.filteredEmployees.length / this.pageSize);
-  }
-
-  get startRecord(): number {
-    if (this.filteredEmployees.length === 0) {
-      return 0;
-    }
-
-    return (this.currentPage - 1) * this.pageSize + 1;
-  }
-
-  get endRecord(): number {
-    return Math.min(
-      this.currentPage * this.pageSize,
-      this.filteredEmployees.length
-    );
-  }
-
-
-
-
   getEmployees() {
     this.employeeService.getAllEmployees()
       .subscribe({
         next: (res) => {
-          this.employees = res.data;
-          this.filteredEmployees = res.data;
-          this.cd.detectChanges();
+          this.employees.set(res.data);
         },
         error: (err) => {
           console.error('Error fetching employees:', err);
@@ -146,49 +158,26 @@ getMaxDate(): string {
       });
   }
 
+  onSearchInput(value: string): void {
+    this.searchText.set(value);
+    this.currentPage.set(1);
+  }
+
   goToPreviousPage() {
-    if (this.currentPage > 1) {
-      this.currentPage--;
+    if (this.currentPage() > 1) {
+      this.currentPage.update(page => page - 1);
     }
   }
 
   goToNextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(page => page + 1);
     }
   }
-
-
-
-
-
-  filterEmployees() {
-    const search = this.searchText.toLowerCase().trim();
-
-    if (!search) {
-      this.filteredEmployees = [...this.employees];
-      return;
-    }
-
-    this.filteredEmployees = this.employees.filter(employee =>
-      employee.employeeCode?.toLowerCase().includes(search) ||
-      employee.firstName?.toLowerCase().includes(search) ||
-      employee.lastName?.toLowerCase().includes(search) ||
-      employee.email?.toLowerCase().includes(search) ||
-      employee.phone?.includes(search) ||
-      employee.role?.toLowerCase().includes(search) ||
-      employee.department?.toLowerCase().includes(search) ||
-      employee.designation?.toLowerCase().includes(search)
-    );
-    this.currentPage = 1;
-  }
-
-
-
 
   openAddEmployeeModal() {
-    this.isEditMode = false;
-    this.selectedEmployee = null
+    this.isEditMode.set(false);
+    this.selectedEmployee.set(null);
 
     this.employeeForm.reset();
 
@@ -199,12 +188,12 @@ getMaxDate(): string {
     ]);
     this.employeeForm.get('password')?.updateValueAndValidity();
 
-    this.showAddEmployeeModal = true;
+    this.showAddEmployeeModal.set(true);
   }
 
   openEditEmployeeModal(employee: Employee) {
-    this.isEditMode = true;
-    this.selectedEmployee = employee;
+    this.isEditMode.set(true);
+    this.selectedEmployee.set(employee);
 
     this.employeeForm.reset();
 
@@ -225,12 +214,12 @@ getMaxDate(): string {
 
     this.employeeForm.get('role')?.disable();
 
-    this.showAddEmployeeModal = true;
+    this.showAddEmployeeModal.set(true);
   }
   closeAddEmployeeModal() {
-    this.showAddEmployeeModal = false;
-    this.isEditMode = false;
-    this.selectedEmployee = null;
+    this.showAddEmployeeModal.set(false);
+    this.isEditMode.set(false);
+    this.selectedEmployee.set(null);
 
     this.employeeForm.reset();
 
@@ -243,17 +232,13 @@ getMaxDate(): string {
     this.employeeForm.get('password')?.updateValueAndValidity();
   }
 
-
-
-
-
   saveEmployee() {
     if (this.employeeForm.invalid) {
       this.employeeForm.markAllAsTouched();
       return;
     }
 
-    if (this.isEditMode && this.selectedEmployee) {
+    if (this.isEditMode() && this.selectedEmployee()) {
       const payload = {
         firstName: this.employeeForm.get('firstName')?.value,
         lastName: this.employeeForm.get('lastName')?.value,
@@ -262,18 +247,17 @@ getMaxDate(): string {
         department: this.employeeForm.get('department')?.value,
         designation: this.employeeForm.get('designation')?.value,
         joiningDate: this.employeeForm.get('joiningDate')?.value,
-        status: this.selectedEmployee.status
+        status: this.selectedEmployee()!.status
       };
 
       this.employeeService.updateEmployee(
-        this.selectedEmployee.employeeId,
+        this.selectedEmployee()!.employeeId,
         payload as any
       ).subscribe({
         next: (res) => {
           alert('Employee updated successfully!');
           this.closeAddEmployeeModal();
           this.getEmployees();
-          this.cd.detectChanges();
         },
         error: (err) => {
           console.error('Error updating employee:', err);
@@ -292,7 +276,6 @@ getMaxDate(): string {
           alert('Employee created successfully!');
           this.closeAddEmployeeModal();
           this.getEmployees();
-          this.cd.detectChanges();
         },
         error: (err) => {
           console.error('Error creating employee:', err);

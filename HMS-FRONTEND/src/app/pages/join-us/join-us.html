@@ -7,14 +7,14 @@
       <p>Submit your employee request for admin approval</p>
     </div>
 
-    @if (successMessage) {
-    <p class="success-message">{{ successMessage }}</p>
+    @if (successMessage()) {
+    <p class="success-message">{{ successMessage() }}</p>
     }
 
-    @if (errorMessage) {
-    <p class="error-message">{{ errorMessage }}</p>
+    @if (errorMessage()) {
+    <p class="error-message">{{ errorMessage() }}</p>
     }
-    @if (!emailChecked) {
+    @if (!emailChecked()) {
 
     <form class="email-check-form" [formGroup]="emailForm" (ngSubmit)="checkEmail()">
 
@@ -31,14 +31,14 @@
         }
       </div>
 
-      <button type="submit" class="submit-btn" [disabled]="emailForm.invalid || isCheckingEmail">
-        {{ isCheckingEmail ? 'Checking...' : 'Check Email' }}
+      <button type="submit" class="submit-btn" [disabled]="emailForm.invalid || isCheckingEmail()">
+        {{ isCheckingEmail() ? 'Checking...' : 'Check Email' }}
       </button>
 
     </form>
 
     }
-    @if (emailChecked) {
+    @if (emailChecked()) {
 
     <form [formGroup]="joinUsForm" (ngSubmit)="submitJoinUs()">
 
@@ -241,8 +241,8 @@
 
       }
 
-      <button type="submit" class="submit-btn" [disabled]="joinUsForm.invalid || isSubmitting">
-        {{ isSubmitting ? 'Submitting...' : 'Submit Join Request' }}
+      <button type="submit" class="submit-btn" [disabled]="joinUsForm.invalid || isSubmitting()">
+        {{ isSubmitting() ? 'Submitting...' : 'Submit Join Request' }}
       </button>
 
     </form>

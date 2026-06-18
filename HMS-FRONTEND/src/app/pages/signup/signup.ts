@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from "@angular/router";
 
@@ -10,11 +10,12 @@ import { RouterLink } from "@angular/router";
 })
 export class Signup {
 
-  message = '';
+  message = signal('');
 
   showDemoMessage() {
-    this.message =
-      'Demo only: In the actual HMS workflow, employee accounts are created by the Admin. Click on the Login Button To Continue ';
+    this.message.set(
+      'Demo only: In the actual HMS workflow, employee accounts are created by the Admin. Click on the Login Button To Continue '
+    );
   }
 
 }

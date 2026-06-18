@@ -1,35 +1,35 @@
 <div class="card-section">
 
   <div class="card"
-  [class.active]="selectedSection==='patients'"
+  [class.active]="selectedSection()==='patients'"
   (click)="showPatients()"
   (keypress)="showPatients()"
   (keydown)="showPatients()"
   (keyup)="showPatients()">
       <h3>Total Patients</h3>
-      <p>{{stats.totalPatients}}</p>
+      <p>{{stats().totalPatients}}</p>
 </div>
    <div class="card"
-  [class.active]="selectedSection==='employees'"
+  [class.active]="selectedSection()==='employees'"
   (click)="showEmployees()"
   (keypress)="showEmployees()"
   (keydown)="showEmployees()"
   (keyup)="showEmployees()">
       <h3>Total Employees</h3>
-      <p>{{stats.totalEmployees}}</p>
+      <p>{{stats().totalEmployees}}</p>
 </div>
     <div class="card"
-    [class.active]="selectedSection==='pending'"
+    [class.active]="selectedSection()==='pending'"
     (click)="showPendingRequests()"
     (keypress)="showPendingRequests()"
     (keydown)="showPendingRequests()"
     (keyup)="showPendingRequests()">
         <h3>Total Pending Requests</h3>
-        <p>{{stats.pendingApprovals}}</p>
+        <p>{{stats().pendingApprovals}}</p>
     </div>
     
 </div>
-@if (selectedSection === 'employees') {
+@if (selectedSection() === 'employees') {
   <div class="table-section">
     
 
@@ -48,7 +48,7 @@
       </thead>
 
       <tbody>
-        @for (emp of employees; track emp.employeeId) {
+        @for (emp of employees(); track emp.employeeId) {
           <tr>
             <td>{{ emp.employeeCode }}</td>
             <td>{{ emp.firstName }} {{ emp.lastName }}</td>
@@ -64,7 +64,7 @@
     </table>
   </div>
 }
-@if (selectedSection === 'patients') {
+@if (selectedSection() === 'patients') {
   <div class="table-section">
     <table>
       <thead>
@@ -81,7 +81,7 @@
       </thead>
 
       <tbody>
-        @for (patient of patients; track patient.patientId) {
+        @for (patient of patients(); track patient.patientId) {
           <tr>
             <td>{{ patient.UHID }}</td>
             <td>{{ patient.firstName }} {{ patient.lastName }}</td>
@@ -98,7 +98,7 @@
   </div>
 }
 
-@if (selectedSection === 'pending') {
+@if (selectedSection() === 'pending') {
   <div class="table-section">
     <table>
       <thead>
@@ -115,7 +115,7 @@
       </thead>
 
       <tbody>
-        @for (request of pendingRequests; track request._id) {
+        @for (request of pendingRequests(); track request._id) {
           <tr>
             <td>{{ request.firstName }} {{ request.lastName }}</td>
             <td>{{ request.email }}</td>

@@ -1,4 +1,5 @@
 const Role = require("../models/Role.model");
+const Node = require("../models/Node.model");
 
 const roles = [
     {
@@ -48,12 +49,32 @@ const roles = [
     }
 ];
 
-const seedRoles = async () => {
+const nodes = [
+    // Admin Nodes
+    { name: "Dashboard", path: "/dashboard", icon: "bi bi-grid", role: "Admin", order: 1 },
+    { name: "Patients", path: "/patients", icon: "bi bi-people", role: "Admin", order: 2 },
+    { name: "Employees", path: "/employees", icon: "bi bi-person-badge", role: "Admin", order: 3 },
+    { name: "Appointments", path: "/appointments", icon: "bi bi-calendar-event", role: "Admin", order: 4 },
+    { name: "Approvals", path: "/approvals", icon: "bi bi-check-circle", role: "Admin", order: 5 },
+    { name: "Doctors", path: "/doctors", icon: "bi bi-heart-pulse", role: "Admin", order: 6 },
+    { name: "Health Records", path: "/health-records", icon: "bi bi-file-earmark-medical", role: "Admin", order: 7 },
+
+    // Receptionist Nodes
+    { name: "Patients", path: "/patients", icon: "bi bi-people", role: "Receptionist", order: 1 },
+    { name: "Appointments", path: "/appointments", icon: "bi bi-calendar-event", role: "Receptionist", order: 2 },
+    { name: "Health Records", path: "/health-records", icon: "bi bi-file-earmark-medical", role: "Receptionist", order: 3 },
+
+    // Doctor Nodes
+    { name: "Appointments", path: "/appointments", icon: "bi bi-calendar-event", role: "Doctor", order: 1 },
+    { name: "Health Records", path: "/health-records", icon: "bi bi-file-earmark-medical", role: "Doctor", order: 2 }
+];
+
+const seedData = async () => {
     try {
+        // Seed Roles
         await Role.insertMany(roles, {
             ordered: false,
         });
-
         console.log("✅ Roles seeded successfully");
     } catch (error) {
         if (error.code === 11000) {
@@ -62,6 +83,20 @@ const seedRoles = async () => {
             console.error("❌ Error seeding roles:", error.message);
         }
     }
+
+    try {
+        // Seed Nodes
+        for (const node of nodes) {
+            await Node.findOneAndUpdate(
+                { role: node.role, path: node.path },
+                node,
+                { upsert: true, new: true }
+            );
+        }
+        console.log("✅ Sidebar nodes seeded successfully");
+    } catch (error) {
+        console.error("❌ Error seeding sidebar nodes:", error.message);
+    }
 };
 
-module.exports = seedRoles;
+module.exports = seedData;

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink ,RouterLinkActive} from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -12,27 +12,19 @@ import { HttpClient } from '@angular/common/http';
 })
 export class Sidebar implements OnInit {
 
-  nodes: any[] = []
+  nodes = signal<any[]>([]);
 
-  constructor(readonly http: HttpClient,
-    readonly cd:ChangeDetectorRef
-  ) {}
+  readonly http = inject(HttpClient);
+
+  constructor() {}
 
   ngOnInit(): void {
 
-
-   
     this.http.get("http://localhost:5000/api/node/list").subscribe((Response: any) => {
-      this.nodes = Response.data;
-      this.cd.detectChanges();
-
-      console.log("nodes:", this.nodes);
+      this.nodes.set(Response.data || []);
+      console.log("nodes:", this.nodes());
     });
-   
-   
-   
-   
-   
+
   }
 
    getFullPath(path: string): string {

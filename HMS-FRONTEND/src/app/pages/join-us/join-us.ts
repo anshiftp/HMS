@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormGroup, FormControl, Validators, ReactiveFormsModule, ValidationErrors, AbstractControl } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,12 +11,12 @@ import { Auth } from '../../services/auth';
 })
 export class JoinUs {
 
-  emailChecked = false;
-  isCheckingEmail = false;
-  isSubmitting = false;
+  emailChecked = signal(false);
+  isCheckingEmail = signal(false);
+  isSubmitting = signal(false);
 
-  successMessage = '';
-  errorMessage = '';
+  successMessage = signal('');
+  errorMessage = signal('');
 
   emailForm = new FormGroup({
     email: new FormControl('', [
@@ -80,10 +80,9 @@ export class JoinUs {
     experienceYears: new FormControl<number | null>(null)
   });
 
-  constructor(
-    readonly auth: Auth,
-    readonly cd: ChangeDetectorRef
-  ) { }
+  readonly auth = inject(Auth);
+
+  constructor() { }
 
  getTodayDate(): string {
   const today = new Date();
@@ -103,25 +102,23 @@ export class JoinUs {
       return;
     }
 
-    this.successMessage = '';
-    this.errorMessage = '';
-    this.isCheckingEmail = true;
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    this.isCheckingEmail.set(true);
 
     const email = this.emailForm.get('email')?.value;
 
     this.auth.checkJoinUsEmail({ email }).subscribe({
       next: (res: any) => {
-        this.successMessage = res.message || 'Email available. Continue filling the form.';
-        this.emailChecked = true;
+        this.successMessage.set(res.message || 'Email available. Continue filling the form.');
+        this.emailChecked.set(true);
         this.joinUsForm.patchValue({ email: email });
-        this.isCheckingEmail = false;
-        this.cd.detectChanges();
+        this.isCheckingEmail.set(false);
       },
       error: (err) => {
-        this.errorMessage = err.error?.message || 'Email already exists';
-        this.emailChecked = false;
-        this.isCheckingEmail = false;
-        this.cd.detectChanges();
+        this.errorMessage.set(err.error?.message || 'Email already exists');
+        this.emailChecked.set(false);
+        this.isCheckingEmail.set(false);
       }
     });
   }
@@ -132,9 +129,9 @@ export class JoinUs {
       return;
     }
 
-    this.successMessage = '';
-    this.errorMessage = '';
-    this.isSubmitting = true;
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    this.isSubmitting.set(true);
 
     const formValue = this.joinUsForm.getRawValue();
 
@@ -162,25 +159,23 @@ export class JoinUs {
 
     this.auth.joinUs(payload).subscribe({
       next: (res: any) => {
-        this.successMessage = res.message || 'Join request submitted successfully.';
-        this.isSubmitting = false;
-        this.emailChecked = false;
+        this.successMessage.set(res.message || 'Join request submitted successfully.');
+        this.isSubmitting.set(false);
+        this.emailChecked.set(false);
         this.emailForm.reset();
         this.joinUsForm.reset();
-        this.cd.detectChanges();
       },
       error: (err) => {
-        this.errorMessage = err.error?.message || 'Failed to submit join request';
-        this.isSubmitting = false;
-        this.cd.detectChanges();
+        this.errorMessage.set(err.error?.message || 'Failed to submit join request');
+        this.isSubmitting.set(false);
       }
     });
   }
 
   resetEmailCheck() {
-    this.emailChecked = false;
-    this.successMessage = '';
-    this.errorMessage = '';
+    this.emailChecked.set(false);
+    this.successMessage.set('');
+    this.errorMessage.set('');
     this.emailForm.reset();
     this.joinUsForm.reset();
   }

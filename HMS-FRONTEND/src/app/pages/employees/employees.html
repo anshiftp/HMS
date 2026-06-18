@@ -15,8 +15,8 @@
     <!-- Search -->
     <div class="table-toolbar">
         <div class="search-box">
-            <input type="text" placeholder="Search..." [value]="searchText"
-                (input)="searchText = $any($event.target).value; filterEmployees()" />
+            <input type="text" placeholder="Search..." [value]="searchText()"
+                (input)="onSearchInput($any($event.target).value)" />
         </div>
     </div>
 
@@ -39,7 +39,7 @@
             </thead>
 
             <tbody>
-                @for (employee of paginatedEmployees; track employee.employeeId) {
+                @for (employee of paginatedEmployees(); track employee.employeeId) {
                 <tr>
                     <td>{{ employee.employeeCode }}</td>
                     <td>{{ employee.firstName }} {{ employee.lastName }}</td>
@@ -50,22 +50,20 @@
                     <td>{{ employee.designation }}</td>
                     <td>{{ employee.joiningDate | date:'dd-MM-yyyy' }}</td>
                     <td>
-                        <span class="status-badge" [ngClass]="{
-                                'status-active': employee.status === 'ACTIVE',
-                                'status-inactive': employee.status === 'INACTIVE'
-                            }">
+                        <span class="status-badge" [class.status-active]="employee.status === 'ACTIVE'"
+                            [class.status-inactive]="employee.status === 'INACTIVE'">
                             {{ employee.status }}
                         </span>
                     </td>
                     <td>
-                        @if (employee.userId !== loggedInUserId) {
+                        @if (employee.userId !== loggedInUserId()) {
                         <button class="action-btn edit-btn" (click)="openEditEmployeeModal(employee)">
                             <i class="bi bi-pencil-square"></i>
                             Edit
                         </button>
                         }
 
-                        @if (employee.userId === loggedInUserId) {
+                        @if (employee.userId === loggedInUserId()) {
                         <span class="self-label">Self</span>
                         }
                     </td>
@@ -74,7 +72,7 @@
             </tbody>
         </table>
 
-        @if (filteredEmployees.length === 0) {
+        @if (filteredEmployees().length === 0) {
         <div class="empty-state">
             <p>No data available in table</p>
 
@@ -93,18 +91,18 @@
     <!-- Footer -->
     <div class="table-footer">
         <p>
-            Records: {{ startRecord }} - {{ endRecord }} of {{ filteredEmployees.length }}
+            Records: {{ startRecord() }} - {{ endRecord() }} of {{ filteredEmployees().length }}
         </p>
 
         <div class="pagination">
-            <i class="bi bi-chevron-left" [class.disabled]="currentPage === 1" (click)="goToPreviousPage()"
+            <i class="bi bi-chevron-left" [class.disabled]="currentPage() === 1" (click)="goToPreviousPage()"
                 (keypress)="goToPreviousPage()" (keydown)="goToPreviousPage()" (keyup)="goToPreviousPage()">
             </i>
             <span class="page-info">
-                Page {{ currentPage }} of {{ totalPages }}
+                Page {{ currentPage() }} of {{ totalPages() }}
             </span>
 
-            <i class="bi bi-chevron-right" [class.disabled]="currentPage === totalPages || totalPages === 0"
+            <i class="bi bi-chevron-right" [class.disabled]="currentPage() === totalPages() || totalPages() === 0"
                 (click)="goToNextPage()" (keypress)="goToNextPage()" (keydown)="goToNextPage()"
                 (keyup)="goToNextPage()">
             </i>
@@ -113,13 +111,13 @@
 </div>
 
 <!-- Add Employee Modal -->
-@if (showAddEmployeeModal) {
+@if (showAddEmployeeModal()) {
 <div class="modal-overlay">
 
     <div class="modal-box">
 
         <div class="modal-header">
-            <h2>{{ isEditMode ? 'Edit Employee' : 'Add Employee' }}</h2>
+            <h2>{{ isEditMode() ? 'Edit Employee' : 'Add Employee' }}</h2>
 
             <button class="close-btn" (click)="closeAddEmployeeModal()">
                 <i class="bi bi-x-lg"></i>
