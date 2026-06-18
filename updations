@@ -1,0 +1,46 @@
+1. Security Enhancements (Backend)
+HTTP Security Headers (Done): Previously, helmet was listed in the package.json dependencies but was not used. I have updated 
+
+app.js
+ to initialize helmet() to set standard headers (XSS protection, MIME sniffing protection, Referrer policies, etc.).
+CORS Wildcards: In 
+
+app.js
+, app.use(cors()) is used without options, allowing wildcard (*) access from any client. In production, restrict this to whitelist domains:
+javascript
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:4200' }));
+API Rate Limiting: To protect endpoints (especially auth routes like /api/auth/login) from brute-force attacks, install and configure express-rate-limit:
+javascript
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+app.use('/api', limiter);
+
+
+2. Angular Architecture & Best Practices (Frontend)
+Using inject() instead of Constructor Injection: Modern Angular (14+) favors the inject function for Dependency Injection, which makes classes cleaner and avoids constructor overhead in components:
+typescript
+// Before:
+constructor(readonly http: HttpClient) {}
+// Modern Standard:
+private http = inject(HttpClient);
+Separation of Concerns (Data Fetching): Currently, many components directly call HttpClient.get() and handle the subscription logic. Standard enterprise architecture delegates all API calls to Services. The service should handle data loading, and expose read-only signals to components using @angular/core/rxjs-interop:
+typescript
+// In your Service:
+private patients$ = this.http.get<Patient[]>('/api/patients');
+public patients = toSignal(this.patients$, { initialValue: [] });
+User Feedback (UX Standards): Components are currently using standard browser alert() popups for notifications. In professional web applications, standard blocking browser alerts are replaced with non-blocking toast notifications (like ngx-toastr or custom toast alerts) to improve UX flow.
+
+
+3. Database Connection Resilience (Backend)
+Mongoose Event Listeners: In 
+
+db.js
+, Mongoose opens a connection asynchronously on startup. If the MongoDB database drops momentarily, the server might fail silently. Adding event listeners ensures database connection issues are logged:
+javascript
+mongoose.connection.on('connected', () => console.log('Mongoose connected.'));
+mongoose.connection.on('error', (err) => console.error('Mongoose error:', err));
+mongoose.connection.on('disconnected', () => console.log('Mongoose disconnected.'));
+
+
+4. Code Cleanliness (TypeScript)
+Avoid any Types: Several files (like admin-dashboard.ts or components templates) use any or any[] typing. Defining strict interfaces for all API response payloads (e.g., Employee[], DashboardStats) helps prevent bugs during refactoring and leverages compiler type-checking.
