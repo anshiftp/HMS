@@ -56,7 +56,13 @@ exports.createHealthRecord = async (data, loggedInUser) => {
 
   return healthRecord;
 };
-exports.getHealthRecords = async (loggedInUser) => {
+exports.getHealthRecords = async (loggedInUser, query = {}) => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const search = query.search ? query.search.trim() : '';
+  const skip = (page - 1) * limit;
+  const all = query.all === 'true';
+
   const filter = {
     isDeleted: false
   };
@@ -81,7 +87,57 @@ exports.getHealthRecords = async (loggedInUser) => {
     filter.doctorId = doctor._id;
   }
 
-  const healthRecords = await HealthRecord.find(filter)
+  if (search) {
+    // 1. Find matching Patients
+    const matchingPatients = await Patient.find({
+      $or: [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { UHID: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const patientIds = matchingPatients.map(p => p._id);
+
+    // 2. Find matching Doctors via Employee & User
+    const matchingUsers = await User.find({
+      $or: [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const userIds = matchingUsers.map(u => u._id);
+
+    const matchingEmployees = await Employee.find({
+      $or: [
+        { userId: { $in: userIds } },
+        { department: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const employeeIds = matchingEmployees.map(e => e._id);
+
+    const matchingDoctors = await Doctor.find({
+      employeeId: { $in: employeeIds }
+    }).select('_id');
+    const doctorIds = matchingDoctors.map(d => d._id);
+
+    // 3. Find matching Appointments
+    const matchingAppointments = await Appointment.find({
+      appointmentCode: { $regex: search, $options: 'i' }
+    }).select('_id');
+    const appointmentIds = matchingAppointments.map(a => a._id);
+
+    filter.$or = [
+      { patientId: { $in: patientIds } },
+      { doctorId: { $in: doctorIds } },
+      { appointmentId: { $in: appointmentIds } },
+      { diagnosis: { $regex: search, $options: 'i' } },
+      { status: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const totalRecords = await HealthRecord.countDocuments(filter);
+
+  let dbQuery = HealthRecord.find(filter)
     .populate('patientId', 'UHID firstName lastName phone gender dob')
     .populate({
       path: 'doctorId',
@@ -97,7 +153,23 @@ exports.getHealthRecords = async (loggedInUser) => {
     .populate('appointmentId', 'appointmentCode appointmentDate timeSlot status reason')
     .sort({ createdAt: -1 });
 
-  return healthRecords;
+  if (!all) {
+    dbQuery = dbQuery.skip(skip).limit(limit);
+  }
+
+  const healthRecords = await dbQuery;
+
+  return {
+    healthRecords,
+    pagination: {
+      totalRecords,
+      currentPage: all ? 1 : page,
+      totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+      limit: all ? totalRecords : limit,
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
+    }
+  };
 };
 
 exports.getHealthRecordById = async (id) => {

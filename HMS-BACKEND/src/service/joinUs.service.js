@@ -123,13 +123,56 @@ exports.getAllJoinUsRequests = async () => {
     return requests;
 };
 
-exports.getPendingJoinUsRequests = async () => {
-    const requests = await JoinUs.find({
+exports.getPendingJoinUsRequests = async (query = {}) => {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const search = query.search ? query.search.trim() : '';
+    const skip = (page - 1) * limit;
+    const all = query.all === 'true';
+
+    const filter = {
         isVerified: true,
         approvalStatus: 'PENDING'
-    }).sort({ createdAt: -1 });
+    };
 
-    return requests;
+    if (search) {
+        filter.$and = [
+            { isVerified: true, approvalStatus: 'PENDING' },
+            {
+                $or: [
+                    { firstName: { $regex: search, $options: 'i' } },
+                    { lastName: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { phone: { $regex: search, $options: 'i' } },
+                    { role: { $regex: search, $options: 'i' } },
+                    { department: { $regex: search, $options: 'i' } },
+                    { designation: { $regex: search, $options: 'i' } }
+                ]
+            }
+        ];
+    }
+
+    const totalRecords = await JoinUs.countDocuments(filter);
+
+    let dbQuery = JoinUs.find(filter).sort({ createdAt: -1 });
+
+    if (!all) {
+        dbQuery = dbQuery.skip(skip).limit(limit);
+    }
+
+    const requests = await dbQuery;
+
+    return {
+        requests,
+        pagination: {
+            totalRecords,
+            currentPage: all ? 1 : page,
+            totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+            limit: all ? totalRecords : limit,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }
+    };
 };
 
 exports.checkJoinUsEmail = async (email) => {

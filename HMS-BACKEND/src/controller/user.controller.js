@@ -55,15 +55,17 @@ const updateEmployee = async (req, res) => {
 
 const getAllEmployees = async (req, res) => {
     try {
-        const employees = await userService.getAllEmployees();
+        const result = await userService.getAllEmployees(req.query);
 
         return res
             .status(200)
-            .json(new ApiResponse(
-                200,
-                "Employees Fetched Successfully",
-                employees
-            ));
+            .json({
+                success: true,
+                statusCode: 200,
+                message: "Employees Fetched Successfully",
+                data: result.employees,
+                pagination: result.pagination
+            });
     } catch (error) {
         return res
             .status(error.statusCode || 500)

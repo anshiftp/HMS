@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Doctor, CreateDoctorPayload,UpdateDoctorPayload } from '../models/doctor.model';
@@ -14,8 +14,12 @@ export class DoctorService {
 
   constructor(readonly http: HttpClient) {}
 
-  getAllDoctors(): Observable<ApiResponse<Doctor[]>> {
-    return this.http.get<ApiResponse<Doctor[]>>(`${this.baseUrl}/doctors/list`);
+  getAllDoctors(page?: number, limit?: number, search?: string): Observable<any> {
+    let params = new HttpParams();
+    if (page) params = params.set('page', page);
+    if (limit) params = params.set('limit', limit);
+    if (search) params = params.set('search', search);
+    return this.http.get<any>(`${this.baseUrl}/doctors/list`, { params });
   }
 
   createDoctor(payload: CreateDoctorPayload): Observable<ApiResponse<Doctor>> {

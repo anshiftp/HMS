@@ -20,11 +20,13 @@ exports.createHealthRecord = async (req, res, next) => {
 
 exports.getHealthRecords = async (req, res, next) => {
   try {
-    const healthRecords = await healthRecordService.getHealthRecords(req.user);
+    const result = await healthRecordService.getHealthRecords(req.user, req.query);
 
     res.status(200).json({
       success: true,
-      data: healthRecords
+      message: 'Health records fetched successfully',
+      data: result.healthRecords,
+      pagination: result.pagination
     });
   } catch (error) {
     next(error);

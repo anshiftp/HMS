@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 import {
@@ -23,8 +23,12 @@ export class HealthRecordService {
     return this.http.post<HealthRecordSingleResponse>(`${this.apiUrl}/create`, data);
   }
 
-  getHealthRecords(): Observable<HealthRecordListResponse> {
-    return this.http.get<HealthRecordListResponse>(`${this.apiUrl}/list`);
+  getHealthRecords(page?: number, limit?: number, search?: string): Observable<any> {
+    let params = new HttpParams();
+    if (page) params = params.set('page', page);
+    if (limit) params = params.set('limit', limit);
+    if (search) params = params.set('search', search);
+    return this.http.get<any>(`${this.apiUrl}/list`, { params });
   }
 
   getHealthRecordById(id: string): Observable<HealthRecordSingleResponse> {

@@ -70,7 +70,7 @@
             </tbody>
         </table>
 
-        @if (filteredDoctors().length === 0) {
+        @if (totalRecords() === 0) {
         <div class="empty-state">
             <p>No data available in table</p>
 
@@ -89,7 +89,7 @@
     <!-- Footer -->
     <div class="table-footer">
         <p>
-            Records: {{ startRecord() }} - {{ endRecord() }} of {{ filteredDoctors().length }}
+            Records: {{ startRecord() }} - {{ endRecord() }} of {{ totalRecords() }}
         </p>
 
         <div class="pagination">

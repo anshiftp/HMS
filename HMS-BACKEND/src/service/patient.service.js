@@ -46,6 +46,7 @@ exports.getAllPatients = async (query = {}) => {
   const limit = Number(query.limit) || 5;
   const search = query.search ? query.search.trim() : '';
   const skip = (page - 1) * limit;
+  const all = query.all === 'true';
 
   const allowedSortFields = ['createdAt', 'firstName', 'lastName', 'UHID'];
   const sortBy = allowedSortFields.includes(query.sortBy)
@@ -72,7 +73,7 @@ exports.getAllPatients = async (query = {}) => {
 
   const totalRecords = await Patient.countDocuments(filter);
 
-  const patients = await Patient.find(filter)
+  let dbQuery = Patient.find(filter)
     .populate({
       path: 'createdBy',
       select: 'firstName lastName email roleId',
@@ -81,9 +82,13 @@ exports.getAllPatients = async (query = {}) => {
         select: 'name roleCode',
       },
     })
-    .sort({ [sortBy]: sortOrder })
-    .skip(skip)
-    .limit(limit);
+    .sort({ [sortBy]: sortOrder });
+
+  if (!all) {
+    dbQuery = dbQuery.skip(skip).limit(limit);
+  }
+
+  const patients = await dbQuery;
 
   const formattedPatients = patients.map((patient) => ({
     patientId: patient._id,
@@ -120,9 +125,9 @@ exports.getAllPatients = async (query = {}) => {
     patients: formattedPatients,
     pagination: {
       totalRecords,
-      currentPage: page,
-      totalPages: Math.ceil(totalRecords / limit),
-      limit,
+      currentPage: all ? 1 : page,
+      totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+      limit: all ? totalRecords : limit,
       sortBy,
       sortOrder: sortOrder === 1 ? 'asc' : 'desc'
     }

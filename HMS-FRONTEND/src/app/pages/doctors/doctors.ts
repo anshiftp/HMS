@@ -19,6 +19,8 @@ export class Doctors implements OnInit {
   selectedDoctor = signal<Doctor | null>(null);
   currentPage = signal(1);
   readonly pageSize = 10;
+  totalRecords = signal(0);
+  totalPages = signal(0);
 
   readonly departments = [
     'OPD', 'IPD', 'Lab',
@@ -43,38 +45,12 @@ export class Doctors implements OnInit {
     '08:00 PM'
   ];
 
-  filteredDoctors = computed(() => {
-    const search = this.searchText().toLowerCase().trim();
-
-    if (!search) {
-      return this.doctors();
-    }
-
-    return this.doctors().filter(doctor =>
-      doctor.employeeCode?.toLowerCase().includes(search) ||
-      doctor.firstName?.toLowerCase().includes(search) ||
-      doctor.lastName?.toLowerCase().includes(search) ||
-      doctor.email?.toLowerCase().includes(search) ||
-      doctor.phone?.includes(search) ||
-      doctor.specialization?.toLowerCase().includes(search) ||
-      doctor.qualification?.toLowerCase().includes(search) ||
-      doctor.medicalRegistrationNo?.toLowerCase().includes(search)
-    );
-  });
-
   paginatedDoctors = computed(() => {
-    const startIndex = (this.currentPage() - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return this.filteredDoctors().slice(startIndex, endIndex);
-  });
-
-  totalPages = computed(() => {
-    return Math.ceil(this.filteredDoctors().length / this.pageSize);
+    return this.doctors();
   });
 
   startRecord = computed(() => {
-    if (this.filteredDoctors().length === 0) {
+    if (this.totalRecords() === 0) {
       return 0;
     }
 
@@ -84,7 +60,7 @@ export class Doctors implements OnInit {
   endRecord = computed(() => {
     return Math.min(
       this.currentPage() * this.pageSize,
-      this.filteredDoctors().length
+      this.totalRecords()
     );
   });
 
@@ -220,11 +196,15 @@ export class Doctors implements OnInit {
     return null;
   }
 
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
   getDoctors() {
-    this.doctorService.getAllDoctors()
+    this.doctorService.getAllDoctors(this.currentPage(), this.pageSize, this.searchText().trim())
       .subscribe({
         next: (res) => {
           this.doctors.set(res.data);
+          this.totalRecords.set(res.pagination.totalRecords);
+          this.totalPages.set(res.pagination.totalPages);
         },
         error: (err) => {
           console.error('Error fetching doctors:', err);
@@ -235,17 +215,27 @@ export class Doctors implements OnInit {
   onSearchInput(value: string): void {
     this.searchText.set(value);
     this.currentPage.set(1);
+    
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    
+    this.searchTimer = setTimeout(() => {
+      this.getDoctors();
+    }, 300);
   }
 
   goToPreviousPage() {
     if (this.currentPage() > 1) {
       this.currentPage.update(page => page - 1);
+      this.getDoctors();
     }
   }
 
   goToNextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(page => page + 1);
+      this.getDoctors();
     }
   }
 

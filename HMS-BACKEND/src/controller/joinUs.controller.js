@@ -46,12 +46,13 @@ exports.getAllJoinUsRequests = async (req, res, next) => {
 
 exports.getPendingJoinUsRequests = async (req, res, next) => {
     try {
-        const requests = await joinUsService.getPendingJoinUsRequests();
+        const result = await joinUsService.getPendingJoinUsRequests(req.query);
 
         return res.status(200).json({
             success: true,
             message: 'Pending verified join requests fetched successfully',
-            data: requests
+            data: result.requests,
+            pagination: result.pagination
         });
     } catch (error) {
         next(error);

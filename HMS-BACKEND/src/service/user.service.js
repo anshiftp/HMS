@@ -243,8 +243,37 @@ exports.currentProfile = async (userId) => {
 
 //to get all the employees
 
-exports.getAllEmployees = async () => {
-    const employees = await Employee.find()
+exports.getAllEmployees = async (query = {}) => {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const search = query.search ? query.search.trim() : '';
+    const skip = (page - 1) * limit;
+    const all = query.all === 'true';
+
+    const filter = {};
+
+    if (search) {
+        const matchingUsers = await User.find({
+            $or: [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id');
+        const userIds = matchingUsers.map(u => u._id);
+
+        filter.$or = [
+            { userId: { $in: userIds } },
+            { employeeCode: { $regex: search, $options: 'i' } },
+            { phone: { $regex: search, $options: 'i' } },
+            { department: { $regex: search, $options: 'i' } },
+            { designation: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const totalRecords = await Employee.countDocuments(filter);
+
+    let dbQuery = Employee.find(filter)
         .populate({
             path: "userId",
             select: "firstName lastName email roleId isVerified status",
@@ -255,17 +284,23 @@ exports.getAllEmployees = async () => {
         })
         .sort({ createdAt: -1 });
 
-    return employees.map((employee) => ({
+    if (!all) {
+        dbQuery = dbQuery.skip(skip).limit(limit);
+    }
+
+    const employees = await dbQuery;
+
+    const formattedEmployees = employees.map((employee) => ({
         employeeId: employee._id,
         employeeCode: employee.employeeCode,
 
-        firstName: employee.userId.firstName,
-        lastName: employee.userId.lastName,
-        email: employee.userId.email,
+        firstName: employee.userId?.firstName,
+        lastName: employee.userId?.lastName,
+        email: employee.userId?.email,
 
-        role: employee.userId.roleId.name,
-        roleCode: employee.userId.roleId.roleCode,
-        isVerified: employee.userId.isVerified,
+        role: employee.userId?.roleId?.name,
+        roleCode: employee.userId?.roleId?.roleCode,
+        isVerified: employee.userId?.isVerified,
 
         phone: employee.phone,
         department: employee.department,
@@ -273,4 +308,16 @@ exports.getAllEmployees = async () => {
         joiningDate: employee.joiningDate,
         status: employee.status
     }));
+
+    return {
+        employees: formattedEmployees,
+        pagination: {
+            totalRecords,
+            currentPage: all ? 1 : page,
+            totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+            limit: all ? totalRecords : limit,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }
+    };
 };

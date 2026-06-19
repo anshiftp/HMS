@@ -3,14 +3,22 @@
     <h2>Pending Approvals</h2>
   </div>
 
-  @if (pendingRequests().length === 0) {
+  <!-- Search -->
+  <div class="table-toolbar">
+    <div class="search-box">
+      <input type="text" placeholder="Search approvals..." [value]="searchText()"
+        (input)="onSearchInput($any($event.target).value)" />
+    </div>
+  </div>
+
+  @if (totalRecords() === 0) {
     <div class="empty-state">
       <h3>No Pending Requests</h3>
       <p>All verified join requests have been processed.</p>
     </div>
   }
 
-  @if (pendingRequests().length > 0) {
+  @if (totalRecords() > 0) {
     <div class="table-section">
       <table>
         <thead>
@@ -160,5 +168,27 @@
       </table>
     </div>
   }
+
+  <!-- Footer -->
+  <div class="table-footer">
+    <p>
+      Records: {{ startRecord() }} - {{ endRecord() }} of {{ totalRecords() }}
+    </p>
+
+    <div class="pagination">
+      <i class="bi bi-chevron-left" [class.disabled]="currentPage() === 1" (click)="goToPreviousPage()"
+        (keypress)="goToPreviousPage()" (keydown)="goToPreviousPage()" (keyup)="goToPreviousPage()">
+      </i>
+
+      <span class="page-info">
+        Page {{ currentPage() }} of {{ totalPages() }}
+      </span>
+
+      <i class="bi bi-chevron-right" [class.disabled]="currentPage() === totalPages() || totalPages() === 0"
+        (click)="goToNextPage()" (keypress)="goToNextPage()" (keydown)="goToNextPage()"
+        (keyup)="goToNextPage()">
+      </i>
+    </div>
+  </div>
 
 </div>

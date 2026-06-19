@@ -17,47 +17,27 @@ export class HealthRecords implements OnInit {
   searchText = signal('');
 
   healthRecords = signal<any[]>([]);
+  currentPage = signal(1);
+  readonly pageSize = 10;
+  totalRecords = signal(0);
+  totalPages = signal(0);
 
   filteredHealthRecords = computed(() => {
-    const search = this.searchText().trim().toLowerCase();
+    return this.healthRecords();
+  });
 
-    if (!search) {
-      return this.healthRecords();
+  startRecord = computed(() => {
+    if (this.totalRecords() === 0) {
+      return 0;
     }
+    return (this.currentPage() - 1) * this.pageSize + 1;
+  });
 
-    return this.healthRecords().filter((record) => {
-      const medicalRecordId = record.medicalRecordId?.toLowerCase() || '';
-      const appointmentCode = record.appointmentId?.appointmentCode?.toLowerCase() || '';
-
-      const patientFirstName = record.patientId?.firstName?.toLowerCase() || '';
-      const patientLastName = record.patientId?.lastName?.toLowerCase() || '';
-      const uhid = record.patientId?.UHID?.toLowerCase() || '';
-
-      const doctorFirstName =
-        record.doctorId?.userId?.firstName?.toLowerCase() ||
-        record.doctorId?.employeeId?.userId?.firstName?.toLowerCase() ||
-        '';
-
-      const doctorLastName =
-        record.doctorId?.userId?.lastName?.toLowerCase() ||
-        record.doctorId?.employeeId?.userId?.lastName?.toLowerCase() ||
-        '';
-
-      const status = record.status?.toLowerCase() || '';
-      const diagnosis = record.diagnosis?.toLowerCase() || '';
-
-      return (
-        medicalRecordId.includes(search) ||
-        appointmentCode.includes(search) ||
-        patientFirstName.includes(search) ||
-        patientLastName.includes(search) ||
-        uhid.includes(search) ||
-        doctorFirstName.includes(search) ||
-        doctorLastName.includes(search) ||
-        status.includes(search) ||
-        diagnosis.includes(search)
-      );
-    });
+  endRecord = computed(() => {
+    return Math.min(
+      this.currentPage() * this.pageSize,
+      this.totalRecords()
+    );
   });
 
   constructor(
@@ -73,9 +53,11 @@ export class HealthRecords implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
 
-    this.healthRecordService.getHealthRecords().subscribe({
+    this.healthRecordService.getHealthRecords(this.currentPage(), this.pageSize, this.searchText().trim()).subscribe({
       next: (res: any) => {
         this.healthRecords.set(res.data || []);
+        this.totalRecords.set(res.pagination?.totalRecords || 0);
+        this.totalPages.set(res.pagination?.totalPages || 0);
         this.loading.set(false);
       },
       error: (error: any) => {
@@ -87,9 +69,33 @@ export class HealthRecords implements OnInit {
     });
   }
 
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
   onSearch(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.searchText.set(value);
+    this.currentPage.set(1);
+
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => {
+      this.loadHealthRecords();
+    }, 300);
+  }
+
+  goToPreviousPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(page => page - 1);
+      this.loadHealthRecords();
+    }
+  }
+
+  goToNextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(page => page + 1);
+      this.loadHealthRecords();
+    }
   }
 
   getPatientName(record: any): string {

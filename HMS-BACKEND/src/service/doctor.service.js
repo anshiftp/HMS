@@ -229,8 +229,46 @@ exports.updateDoctor = async (doctorId, data) => {
     return buildDoctorResponse(doctor, employee, user);
 };
 
-exports.getAllDoctors = async () => {
-    const doctors = await Doctor.find()
+exports.getAllDoctors = async (query = {}) => {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 10;
+    const search = query.search ? query.search.trim() : '';
+    const skip = (page - 1) * limit;
+    const all = query.all === 'true';
+
+    const filter = {};
+
+    if (search) {
+        const matchingUsers = await User.find({
+            $or: [
+                { firstName: { $regex: search, $options: 'i' } },
+                { lastName: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id');
+        const userIds = matchingUsers.map(u => u._id);
+
+        const matchingEmployees = await Employee.find({
+            $or: [
+                { userId: { $in: userIds } },
+                { employeeCode: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } },
+                { department: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id');
+        const employeeIds = matchingEmployees.map(e => e._id);
+
+        filter.$or = [
+            { employeeId: { $in: employeeIds } },
+            { specialization: { $regex: search, $options: 'i' } },
+            { qualification: { $regex: search, $options: 'i' } },
+            { medicalRegistrationNo: { $regex: search, $options: 'i' } }
+        ];
+    }
+
+    const totalRecords = await Doctor.countDocuments(filter);
+
+    let dbQuery = Doctor.find(filter)
         .populate({
             path: 'employeeId',
             populate: {
@@ -240,7 +278,13 @@ exports.getAllDoctors = async () => {
         })
         .sort({ createdAt: -1 });
 
-    return doctors.map((doctor) => ({
+    if (!all) {
+        dbQuery = dbQuery.skip(skip).limit(limit);
+    }
+
+    const doctors = await dbQuery;
+
+    const formattedDoctors = doctors.map((doctor) => ({
         doctorId: doctor._id,
 
         employeeId: doctor.employeeId?._id,
@@ -264,4 +308,16 @@ exports.getAllDoctors = async () => {
         status: doctor.employeeId?.userId?.status,
         isVerified: doctor.employeeId?.userId?.isVerified
     }));
+
+    return {
+        doctors: formattedDoctors,
+        pagination: {
+            totalRecords,
+            currentPage: all ? 1 : page,
+            totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+            limit: all ? totalRecords : limit,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+        }
+    };
 };

@@ -18,42 +18,22 @@ export class Employees implements OnInit {
   showAddEmployeeModal = signal(false);
   currentPage = signal(1);
   readonly pageSize = 10;
+  totalRecords = signal(0);
+  totalPages = signal(0);
   isEditMode = signal(false);
   selectedEmployee = signal<Employee | null>(null);
   loggedInUserId = signal<string | null>(null);
 
   filteredEmployees = computed(() => {
-    const search = this.searchText().toLowerCase().trim();
-
-    if (!search) {
-      return this.employees();
-    }
-
-    return this.employees().filter(employee =>
-      employee.employeeCode?.toLowerCase().includes(search) ||
-      employee.firstName?.toLowerCase().includes(search) ||
-      employee.lastName?.toLowerCase().includes(search) ||
-      employee.email?.toLowerCase().includes(search) ||
-      employee.phone?.includes(search) ||
-      employee.role?.toLowerCase().includes(search) ||
-      employee.department?.toLowerCase().includes(search) ||
-      employee.designation?.toLowerCase().includes(search)
-    );
+    return this.employees();
   });
 
   paginatedEmployees = computed(() => {
-    const startIndex = (this.currentPage() - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return this.filteredEmployees().slice(startIndex, endIndex);
-  });
-
-  totalPages = computed(() => {
-    return Math.ceil(this.filteredEmployees().length / this.pageSize);
+    return this.employees();
   });
 
   startRecord = computed(() => {
-    if (this.filteredEmployees().length === 0) {
+    if (this.totalRecords() === 0) {
       return 0;
     }
 
@@ -63,7 +43,7 @@ export class Employees implements OnInit {
   endRecord = computed(() => {
     return Math.min(
       this.currentPage() * this.pageSize,
-      this.filteredEmployees().length
+      this.totalRecords()
     );
   });
 
@@ -147,10 +127,12 @@ getMaxDate(): string {
   }
 
   getEmployees() {
-    this.employeeService.getAllEmployees()
+    this.employeeService.getAllEmployees(this.currentPage(), this.pageSize, this.searchText().trim())
       .subscribe({
         next: (res) => {
           this.employees.set(res.data);
+          this.totalRecords.set(res.pagination.totalRecords);
+          this.totalPages.set(res.pagination.totalPages);
         },
         error: (err) => {
           console.error('Error fetching employees:', err);
@@ -158,20 +140,31 @@ getMaxDate(): string {
       });
   }
 
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
   onSearchInput(value: string): void {
     this.searchText.set(value);
     this.currentPage.set(1);
+
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => {
+      this.getEmployees();
+    }, 300);
   }
 
   goToPreviousPage() {
     if (this.currentPage() > 1) {
       this.currentPage.update(page => page - 1);
+      this.getEmployees();
     }
   }
 
   goToNextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(page => page + 1);
+      this.getEmployees();
     }
   }
 

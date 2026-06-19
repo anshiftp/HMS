@@ -20,12 +20,13 @@ exports.createAppointment = async (req, res, next) => {
 
 exports.getAppointments = async (req, res, next) => {
     try {
-        const appointments = await appointmentService.getAppointments();
+        const result = await appointmentService.getAppointments(req.query);
 
         return res.status(200).json({
             success: true,
             message: 'Appointments fetched successfully',
-            data: appointments
+            data: result.appointments,
+            pagination: result.pagination
         });
     } catch (error) {
         next(error);

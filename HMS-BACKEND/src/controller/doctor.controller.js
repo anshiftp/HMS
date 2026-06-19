@@ -53,13 +53,14 @@ const updateDoctor = async (req, res) => {
 
 const getAllDoctors = async (req, res, next) => {
     try {
-        const doctors = await doctorService.getAllDoctors();
+        const result = await doctorService.getAllDoctors(req.query);
 
         res.status(200).json({
             success: true,
             statusCode: 200,
             message: 'Doctors fetched successfully',
-            data: doctors
+            data: result.doctors,
+            pagination: result.pagination
         });
     } catch (error) {
         next(error);

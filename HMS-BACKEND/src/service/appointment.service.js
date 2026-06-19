@@ -406,8 +406,61 @@ exports.createAppointment = async (
   return appointment;
 };
 
-exports.getAppointments = async () => {
-  const appointments = await Appointment.find()
+exports.getAppointments = async (query = {}) => {
+  const page = Number(query.page) || 1;
+  const limit = Number(query.limit) || 10;
+  const search = query.search ? query.search.trim() : '';
+  const skip = (page - 1) * limit;
+  const all = query.all === 'true';
+
+  const filter = {};
+
+  if (search) {
+    // 1. Find matching Patients
+    const matchingPatients = await Patient.find({
+      $or: [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { UHID: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const patientIds = matchingPatients.map(p => p._id);
+
+    // 2. Find matching Doctors via Employee & User
+    const matchingUsers = await User.find({
+      $or: [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const userIds = matchingUsers.map(u => u._id);
+
+    const matchingEmployees = await Employee.find({
+      $or: [
+        { userId: { $in: userIds } },
+        { department: { $regex: search, $options: 'i' } }
+      ]
+    }).select('_id');
+    const employeeIds = matchingEmployees.map(e => e._id);
+
+    const matchingDoctors = await Doctor.find({
+      employeeId: { $in: employeeIds }
+    }).select('_id');
+    const doctorIds = matchingDoctors.map(d => d._id);
+
+    filter.$or = [
+      { patientId: { $in: patientIds } },
+      { doctorId: { $in: doctorIds } },
+      { appointmentCode: { $regex: search, $options: 'i' } },
+      { timeSlot: { $regex: search, $options: 'i' } },
+      { status: { $regex: search, $options: 'i' } },
+      { reason: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  const totalRecords = await Appointment.countDocuments(filter);
+
+  let dbQuery = Appointment.find(filter)
     .populate('patientId')
     .populate({
       path: 'doctorId',
@@ -422,7 +475,23 @@ exports.getAppointments = async () => {
     .populate('createdBy', 'firstName lastName email')
     .sort({ createdAt: -1 });
 
-  return appointments;
+  if (!all) {
+    dbQuery = dbQuery.skip(skip).limit(limit);
+  }
+
+  const appointments = await dbQuery;
+
+  return {
+    appointments,
+    pagination: {
+      totalRecords,
+      currentPage: all ? 1 : page,
+      totalPages: all ? 1 : Math.ceil(totalRecords / limit),
+      limit: all ? totalRecords : limit,
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
+    }
+  };
 };
 
 exports.getMyAppointments = async (user) => {

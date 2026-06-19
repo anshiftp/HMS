@@ -156,3 +156,51 @@ tr:last-child td {
   margin: 8px 0;
   color: #111827;
 }
+
+.table-footer {
+  background: var(--card-bg);
+  padding: 14px 16px;
+  border: 0.5px solid var(--border-color);
+  border-top: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.table-footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.pagination {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.pagination i {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 16px;
+  transition: 0.2s ease;
+}
+
+.pagination i:hover {
+  color: var(--primary);
+  transform: scale(1.15);
+}
+
+.pagination i.disabled {
+  color: var(--border-color);
+  pointer-events: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.page-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}

@@ -28,6 +28,8 @@ export class Appointments implements OnInit {
 
   currentPage = signal(1);
   readonly pageSize = 10;
+  totalRecords = signal(0);
+  totalPages = signal(0);
 
   patients = signal<Patient[]>([]);
   doctors = signal<Doctor[]>([]);
@@ -56,39 +58,39 @@ export class Appointments implements OnInit {
   bookedCount = signal(0);
 
   filteredAppointments = computed(() => {
-    const search = this.searchText().toLowerCase().trim();
+    if (this.userRole() === 'Doctor') {
+      const search = this.searchText().toLowerCase().trim();
 
-    if (!search) {
-      return this.appointments();
+      if (!search) {
+        return this.appointments();
+      }
+
+      return this.appointments().filter(appointment =>
+        appointment.appointmentCode?.toLowerCase().includes(search) ||
+        appointment.patientId?.firstName?.toLowerCase().includes(search) ||
+        appointment.patientId?.lastName?.toLowerCase().includes(search) ||
+        appointment.patientId?.UHID?.toLowerCase().includes(search) ||
+        appointment.doctorId?.employeeId?.userId?.firstName?.toLowerCase().includes(search) ||
+        appointment.doctorId?.employeeId?.userId?.lastName?.toLowerCase().includes(search) ||
+        appointment.doctorId?.employeeId?.department?.toLowerCase().includes(search) ||
+        appointment.timeSlot?.toLowerCase().includes(search) ||
+        appointment.status?.toLowerCase().includes(search) ||
+        appointment.reason?.toLowerCase().includes(search)
+      );
     }
 
-    return this.appointments().filter(appointment =>
-      appointment.appointmentCode?.toLowerCase().includes(search) ||
-      appointment.patientId?.firstName?.toLowerCase().includes(search) ||
-      appointment.patientId?.lastName?.toLowerCase().includes(search) ||
-      appointment.patientId?.UHID?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.userId?.firstName?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.userId?.lastName?.toLowerCase().includes(search) ||
-      appointment.doctorId?.employeeId?.department?.toLowerCase().includes(search) ||
-      appointment.timeSlot?.toLowerCase().includes(search) ||
-      appointment.status?.toLowerCase().includes(search) ||
-      appointment.reason?.toLowerCase().includes(search)
-    );
+    return this.appointments();
   });
 
   paginatedAppointments = computed(() => {
-    const startIndex = (this.currentPage() - 1) * this.pageSize;
-    const endIndex = startIndex + this.pageSize;
-
-    return this.filteredAppointments().slice(startIndex, endIndex);
-  });
-
-  totalPages = computed(() => {
-    return Math.ceil(this.filteredAppointments().length / this.pageSize);
+    return this.filteredAppointments();
   });
 
   startRecord = computed(() => {
-    if (this.filteredAppointments().length === 0) {
+    if (this.userRole() === 'Doctor') {
+      return this.paginatedAppointments().length === 0 ? 0 : 1;
+    }
+    if (this.totalRecords() === 0) {
       return 0;
     }
 
@@ -96,9 +98,12 @@ export class Appointments implements OnInit {
   });
 
   endRecord = computed(() => {
+    if (this.userRole() === 'Doctor') {
+      return this.paginatedAppointments().length;
+    }
     return Math.min(
       this.currentPage() * this.pageSize,
-      this.filteredAppointments().length
+      this.totalRecords()
     );
   });
 
@@ -233,6 +238,8 @@ export class Appointments implements OnInit {
       .subscribe({
         next: (res) => {
           this.appointments.set(res.data);
+          this.totalRecords.set(res.data.length);
+          this.totalPages.set(1);
         },
         error: (err) => {
           console.error('Error fetching my appointments:', err);
@@ -241,10 +248,12 @@ export class Appointments implements OnInit {
   }
 
   getAppointments() {
-    this.appointmentService.getAppointments()
+    this.appointmentService.getAppointments(this.currentPage(), this.pageSize, this.searchText().trim())
       .subscribe({
         next: (res) => {
           this.appointments.set(res.data);
+          this.totalRecords.set(res.pagination.totalRecords);
+          this.totalPages.set(res.pagination.totalPages);
         },
         error: (err) => {
           console.error('Error fetching appointments:', err);
@@ -276,20 +285,37 @@ export class Appointments implements OnInit {
       });
   }
 
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
   onSearchInput(value: string): void {
     this.searchText.set(value);
     this.currentPage.set(1);
+
+    if (this.userRole() !== 'Doctor') {
+      if (this.searchTimer) {
+        clearTimeout(this.searchTimer);
+      }
+      this.searchTimer = setTimeout(() => {
+        this.getAppointments();
+      }, 300);
+    }
   }
 
   goToPreviousPage() {
     if (this.currentPage() > 1) {
       this.currentPage.update(page => page - 1);
+      if (this.userRole() !== 'Doctor') {
+        this.getAppointments();
+      }
     }
   }
 
   goToNextPage() {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(page => page + 1);
+      if (this.userRole() !== 'Doctor') {
+        this.getAppointments();
+      }
     }
   }
 

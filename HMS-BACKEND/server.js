@@ -1,22 +1,28 @@
 const app=require('./app');
 
-const connection=require('./src/config/db')
 const connectDB=require('./src/config/db')
 const seedAdmin=require('./src/utils/seedAdmin')
 const seedData=require('./src/utils/seedData')
-
-connectDB();
-
-
+const seedDummyData=require('./src/utils/seedDummyData')
 
 const PORT=process.env.PORT||5000;
 
+const startServer = async () => {
+    try {
+        await connectDB();
+        
+        app.listen(PORT,()=>
+        {
+            console.log(`Server running on http://localhost:${PORT}`);
+        });
 
+        await seedData();
+        await seedAdmin();
+        await seedDummyData();
+    } catch (error) {
+        console.error("❌ Failed to start server:", error.message);
+        process.exit(1);
+    }
+};
 
-app.listen(PORT,()=>
-{
-    console.log(`Server running on http://localhost:${PORT}`);
-})
-
-seedData();
-seedAdmin();
+startServer();

@@ -30,7 +30,7 @@
     </div>
   }
 
-  @if (!loading() && filteredHealthRecords().length > 0) {
+  @if (!loading() && totalRecords() > 0) {
     <div class="health-record-table-section">
       <table>
         <thead>
@@ -94,12 +94,34 @@
     </div>
   }
 
-  @if (!loading() && filteredHealthRecords().length === 0) {
+  @if (!loading() && totalRecords() === 0) {
     <div class="empty-state">
       <i class="bi bi-file-medical"></i>
       <h3>No health records found</h3>
       <p>Health records will appear here after draft creation.</p>
     </div>
   }
+
+  <!-- Footer -->
+  <div class="table-footer">
+    <p>
+      Records: {{ startRecord() }} - {{ endRecord() }} of {{ totalRecords() }}
+    </p>
+
+    <div class="pagination">
+      <i class="bi bi-chevron-left" [class.disabled]="currentPage() === 1" (click)="goToPreviousPage()"
+        (keypress)="goToPreviousPage()" (keydown)="goToPreviousPage()" (keyup)="goToPreviousPage()">
+      </i>
+
+      <span class="page-info">
+        Page {{ currentPage() }} of {{ totalPages() }}
+      </span>
+
+      <i class="bi bi-chevron-right" [class.disabled]="currentPage() === totalPages() || totalPages() === 0"
+        (click)="goToNextPage()" (keypress)="goToNextPage()" (keydown)="goToNextPage()"
+        (keyup)="goToNextPage()">
+      </i>
+    </div>
+  </div>
 
 </div>
