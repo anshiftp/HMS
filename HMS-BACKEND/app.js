@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express=require('express');
 const cors=require('cors');
+const cookieParser=require('cookie-parser');
 const morgan=require('morgan');
 const helmet=require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -34,6 +35,7 @@ app.use(cors({
     origin: allowedOrigin,
     credentials: true
 }));
+app.use(cookieParser());
 app.use('/api', apiLimiter);
 
 app.use(morgan('dev'));

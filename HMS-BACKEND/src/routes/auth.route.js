@@ -25,6 +25,10 @@ router.post('/change-password',
     authController.changePassword
 )
 
+router.post('/logout',
+    authController.logout
+)
+
 router.get('/verify-email/:token',
      authController.verifyEmail);
 

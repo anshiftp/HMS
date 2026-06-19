@@ -3,14 +3,18 @@ const {verifyToken} =require('../utils/jwt')
 const authMiddleware=(req,res,next)=>
 {
     try{
-      
-        //read authorization header 
+        let token = null;
 
-        const authHeader=req.headers.authorization;
+        if (req.cookies && req.cookies.token) {
+            token = req.cookies.token;
+        } else {
+            const authHeader = req.headers.authorization;
+            if (authHeader?.startsWith("Bearer ")) {
+                token = authHeader.split(" ")[1];
+            }
+        }
 
-        if(
-            !authHeader?.startsWith("Bearer ")
-        )
+        if (!token)
         {
             return res.status(401).json(
                 {
@@ -19,13 +23,8 @@ const authMiddleware=(req,res,next)=>
                 }
             );
         }
-    
-        //extracting the token from the bearer 
-
-        const token =authHeader.split(" ")[1];
 
         const decoded=verifyToken(token);
-
 
         req.user=decoded;
         next();

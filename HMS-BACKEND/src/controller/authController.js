@@ -29,6 +29,14 @@ const verifyEmail=async(req,res)=>{
 const login=async(req,res)=>{
     try{
         const result=await authService.loginEmployee(req.body);
+        
+        res.cookie('token', result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
+        });
+
         return res
             .status(200)
             .json(new ApiResponse(200,"Login Successfull",result));
@@ -65,4 +73,25 @@ const changePassword = async (req, res, next) => {
     }
 };
 
-module.exports={verifyEmail,login,changePassword};
+const logout = async (req, res) => {
+    try {
+        res.clearCookie('token', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/'
+        });
+        return res
+            .status(200)
+            .json(new ApiResponse(200, "Logout Successfull", null));
+    } catch (error) {
+        return res
+            .status(500)
+            .json({
+                success: false,
+                message: error.message || "Logout failed"
+            });
+    }
+};
+
+module.exports={verifyEmail,login,changePassword,logout};
